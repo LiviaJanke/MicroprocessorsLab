@@ -12,26 +12,63 @@ start:
 	movwf	TRISC, A	    ; Port C all outputs
 	bra 	test
 loop:
-	movff 	0xFF, PORTC
+	movff 	0x06, PORTC
 	incf 	0x06, W, A
-
-
 test:
 	movwf	0x06, A	    ; Test for end of loop condition
-	;movf    PORTD, W, A
-	;movf	PORTD, W, B
-	;movlb	0xf
-	;movf	PORTD, W, B
-	;movf	PORTD, W
-	movlw	0xFF
+	movlw 	0xFF
 	cpfsgt 	0x06, A
-	call	delay
+	call	hugedelay
 	bra 	loop		    ; Not yet finished goto start of loop again
 	goto 	0x0		    ; Re-run program from start
 
-
-delay:	decfsz	0x20, A
-	bra	delay
+delay:
+	decfsz	0xFF
+	bra delay
 	return
-
+bigdelay:
+	call	delay
+	call	delay
+	call	delay
+	call	delay
+	call	delay
+	call	delay
+	return
+bigbigdelay:
+	call bigdelay
+	call bigdelay
+	call bigdelay
+	return
+bigbigbigdelay:
+	call bigbigdelay
+	call bigbigdelay
+	call bigbigdelay
+	call bigbigdelay
+	call bigbigdelay
+	call bigbigdelay
+	call bigbigdelay
+	call bigbigdelay
+	call bigbigdelay
+	return
+hugedelay:
+	call bigbigbigdelay
+	call bigbigbigdelay
+	call bigbigbigdelay
+	call bigbigbigdelay
+	call bigbigbigdelay
+	call bigbigbigdelay
+	call bigbigbigdelay
+	call bigbigbigdelay
+	call bigbigbigdelay
+	call bigbigbigdelay
+	call bigbigbigdelay
+	return
+	
+	
+;bigdelay:
+	;movlw	0x00
+;dloop:	decf	0x11, f, A
+	;subwfb	0x10, f, A
+	;return
+	
 	end	main
