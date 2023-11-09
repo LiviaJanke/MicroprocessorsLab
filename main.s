@@ -26,7 +26,7 @@ test:
 	movwf	0x06, A	    ; Test for end of loop condition
 	movlw 	0xFF
 	cpfsgt 	0x06, A
-	call	hugedelay
+	call	bigdelay
 	bra 	loop		    ; Not yet finished goto start of loop again
 ;	bsf	PORTJ, 1, 0
 	movff 	0x06, PORTJ
