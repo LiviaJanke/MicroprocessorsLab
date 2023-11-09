@@ -4,15 +4,15 @@ psect	code, abs
 	
 main:
 	org	0x0
-	goto	start
+;	goto	start
 
 	org	0x100		    ; Main code starts here at address 0x100
 start:
 	movlw 	0x0
-	movwf	TRISC, A	    ; Port C all outputs
+	movwf	TRISD, A	    ; Port C all outputs
 	bra 	test
 loop:
-	movff 	0x06, PORTC
+	movff 	0x06, PORTD
 	incf 	0x06, W, A
 test:
 	movwf	0x06, A	    ; Test for end of loop condition
