@@ -16,6 +16,7 @@ start:
 ;	CLRF	LATJ	; Alternate method
 			; to clear output latches
 ;	MOVLW	0CFh
+	movlw	0x0
 	movwf	TRISJ, A
 ;	bcf	PORTJ, 1 ,0
 	bra 	test
@@ -26,7 +27,7 @@ test:
 	movwf	0x06, A	    ; Test for end of loop condition
 	movlw 	0xFF
 	cpfsgt 	0x06, A
-	call	bigdelay
+	call	delay
 	bra 	loop		    ; Not yet finished goto start of loop again
 ;	bsf	PORTJ, 1, 0
 	movff 	0x06, PORTJ
