@@ -9,7 +9,15 @@ main:
 	org	0x100		    ; Main code starts here at address 0x100
 start:
 	movlw 	0x0
-	movwf	TRISD, A	    ; Port C all outputs
+	movwf	TRISD, A	; Port C all outputs
+	
+;	CLRF	PORTJ	; Initialize PORTJ by
+			; clearing output latches    
+;	CLRF	LATJ	; Alternate method
+			; to clear output latches
+;	MOVLW	0CFh
+	movwf	TRISJ, A
+;	bcf	PORTJ, 1 ,0
 	bra 	test
 loop:
 	movff 	0x06, PORTD
@@ -20,6 +28,8 @@ test:
 	cpfsgt 	0x06, A
 	call	hugedelay
 	bra 	loop		    ; Not yet finished goto start of loop again
+;	bsf	PORTJ, 1, 0
+	movff 	0x06, PORTJ
 	goto 	0x0		    ; Re-run program from start
 
 delay:
