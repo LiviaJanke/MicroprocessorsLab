@@ -16,8 +16,8 @@ keypad_Setup:
     bsf	    REPU    ; set pull-ups to on for PORTE
     movlb   0
     movlw   0x0F
+    movwf   TRISE
     clrf    LATE    ; write 0s to the lat e register
-
     return
 
     
@@ -30,6 +30,7 @@ keypad_Read:
     movf    PORTE, W ;  read PORTE to determine the logic levels on PORTE 0-3      
     iorwf   0xE0, 0, 1   ; num is low bits
     movwf   keyval
+    movff   keyval, PORTD
     call    bigdelay 
     goto    keypad_Read
 
