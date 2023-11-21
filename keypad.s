@@ -31,7 +31,10 @@ keypad_Read:
     movff   PORTE, low_bits ; read the 4 PORTE pins
     movlw   0xF0    
     movwf   TRISE   ; set TRISE to 0x0F
-    
+    movf    PORTE, W ;  read PORTE to determine the logic levels on PORTE 0-3      
+    iorwf   low_bits, W
+    movwf   keyval  
+    goto    test_none
 
 test_none:
     movlw   0xFF
@@ -40,9 +43,6 @@ test_none:
     retlw   0x00
 
 test_0:
-    movf    PORTE, W ;  read PORTE to determine the logic levels on PORTE 0-3      
-    iorwf   low_bits, W
-    movwf   keyval
     movf    keyval, W
     movwf   PORTD
     call    delay

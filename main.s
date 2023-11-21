@@ -1,7 +1,7 @@
 #include <xc.inc>
 
 extrn	UART_Setup, UART_Transmit_Message  ; external subroutines
-extrn	LCD_Setup, LCD_Write_Message
+extrn	LCD_Setup, LCD_Write_Message, LCD_clear
 extrn	keypad_Setup, keypad_Read, keyval
     
 global	myArray
@@ -27,18 +27,36 @@ setup:	bcf	CFGS	; point to Flash program memory
 	goto	start
 	
 	; ******* Main programme ****************************************
-start: 	;lfsr	0, myArray	; Load FSR0 with address in RAM	
-	call	keypad_Read
+start: 	lfsr	0, myArray	; Load FSR0 with address in RAM	
+    	movlw	low highword(myArray)	; address of data in PM
+	movwf	TBLPTRU, A		; load upper bits to TBLPTRU
+	movlw	high(myArray)	; address of data in PM
+	movwf	TBLPTRH, A		; load high byte to TBLPTRH
+	movlw	low(myArray)	; address of data in PM
+	movwf	TBLPTRL, A		; load low byte to TBLPTRL
+    	call	keypad_Read
 	movlw	keyval
-;	lfsr	2, myArray
-;	call	UART_Transmit_Message
-;	movlw	keyval
+	movwf	counter, A
+	
+loop: 	tblrd*+			; one byte from PM to TABLAT, increment TBLPRT
+	movff	TABLAT, POSTINC0; move data from TABLAT to (FSR0), inc FSR0	
+	decfsz	counter, A		; count down to zero
+	bra	loop	
+	
+	movlw	keyval	; output message to UART
+	lfsr	2, myArray
+	call	UART_Transmit_Message
+	
+	movlw	keyval
 	addlw	0xff
-;	lfsr	2, myArray
+	lfsr	2, myArray
 	call	LCD_Write_Message
+	call	LCD_clear
 	call	delay	
+	
+	return
 ;	goto	start
-	goto	$
+;	goto	$
 	; a delay subroutine if you need one, times around loop in delay_count
 delay:	decfsz	delay_count, A	; decrement until zero
 	bra	delay
