@@ -33,4 +33,3 @@ UART_Transmit_Byte:	    ; Transmits byte stored in W
     movwf   TXREG1, A
     return
 
-
