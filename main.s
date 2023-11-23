@@ -1,6 +1,6 @@
 #include <xc.inc>
 
-extrn	UART_Setup, UART_Transmit_Message  ; external subroutines    
+extrn	UART_Setup, UART_Transmit_Message  ; external subroutines
 extrn	LCD_Setup, LCD_Write_Message, LCD_clear,keypad_output,LCD_Send_Char_D
 extrn	converter
     
