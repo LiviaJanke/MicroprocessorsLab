@@ -1,72 +1,146 @@
 #include <xc.inc>
-  
-global  keypad_Setup, keypad_Read, keyval, low_bits
+    
+global  keypad_output, combineddata,columndata, rowdata
 
+extrn	LCD_delay_ms
+    
 psect	udata_acs   ; reserve data space in access ram
-keypad_counter: ds    1	    ; reserve 1 byte for variable UART_counter
+columndata: ds    1	    ; reserve 1 byte for variable UART_counter
+rowdata:ds  1
+combineddata:ds	1
 
-psect	udata_bank4 ; reserve data anywhere in RAM (here at 0x40)
-keyval:    ds 0x8 ; reserve 8 bytes for message data
-low_bits:  ds 0x8
-    
-    
 psect	keypad_code,class=CODE
-    
-keypad_Setup:
 
-    movlb   15	; pad configure 1 is in 15?
-    bsf	    REPU    ; set pull-ups to on for PORTE
-    movlb   0
-    clrf    LATE    ; write 0s to the lat e register
-    MOVLW   0CFh
-    MOVWF   TRISD
-    clrf    LATD
+keypad_setup:
+
+    movlw   0x0F    ;Move 00001111 to WR
+    movwf   TRISE   ;Sets lower 4 bits to 1-configures them as inputs
+    movlb   0x0F    ;Loads 1111 to BSR
+    bsf	    REPU    ;Makes SBR15 ready for inputs
+    movlb   0x00    ;Loads 0000 to lower bits of BSR 
+    clrf    LATE
     return
 
     
-keypad_Read:
-    movlw   0x0F
-    movwf   TRISE
-    call    bigdelay   ; can add a delay here to prevent need for status checks
-    movff   PORTE, low_bits ; read the 4 PORTE pins
-    movlw   0xF0    
-    movwf   TRISE   ; set TRISE to 0x0F
-    movf    PORTE, W ;  read PORTE to determine the logic levels on PORTE 0-3      
-    iorwf   low_bits, W
-    movwf   keyval  
-    goto    test_none
+keypad_read:
+    
+    call    keypad_setup
+    movlw   0x01
+    call    LCD_delay_ms
+    movf    PORTE, W
+    movwf   rowdata
+    call    keypad_flip
+    movlw   0x01
+    call    LCD_delay_ms
+    movf    PORTE, W
+    movwf   columndata
+    movf    rowdata, W
+    iorwf   columndata, W
+    movwf   combineddata
+    return    
+    
+keypad_flip:
+    movlw   0xF0    ;Move 11110000 to WR
+    movwf   TRISE   ;Sets lower 4 bits to 0 - configures them as inputs
+    movlb   0x0F    ;
+    bsf	    REPU    ;Makes SBR15 ready for inputs
+    movlb   0x00    ;Loads 0000 to lower bits BSR 
+    clrf    LATE
+    return
+
+keypad_output:
+    call    keypad_read
+    bra	    test_none
+    return
 
 test_none:
     movlw   0xFF
-    cpfseq  keyval, A
+    cpfseq  combineddata	
     bra	    test_0
-    retlw   0x00
-
+    retlw   0xFF	
 test_0:
-    movf    keyval, W
-    movwf   PORTD
-    call    delay
-    goto    keypad_Read
-    
-    
-delay:	decfsz	0xFF, A	; decrement until zero
-	bra	delay
-	return
+    movlw   0xEB	
+    cpfseq  combineddata	
+    bra	    test_1
+    retlw   0x0E	   
+test_1:
+    movlw   0x77	
+    cpfseq  combineddata	
+    bra	    test_2
+    retlw   0x01
+test_2:
+    movlw   0x7B
+    cpfseq  combineddata	
+    bra	    test_3
+    retlw   0x04
+test_3:
+    movlw   0x7D	
+    cpfseq  combineddata	
+    bra	    test_4
+    retlw   0x07
+test_4:
+    movlw   0xB7	
+    cpfseq  combineddata	
+    bra	    test_5
+    retlw   0x02
+test_5:
+    movlw   0xBB
+    cpfseq  combineddata	
+    bra	    test_6
+    retlw   0x05	
+test_6:
+    movlw   0xBD
+    cpfseq  combineddata	
+    bra	    test_7
+    retlw   0x08
+test_7:
+    movlw   0xD7	
+    cpfseq  combineddata
+    bra	    test_8
+    retlw   0x03
+test_8:
+    movlw   0xDB
+    cpfseq  combineddata	
+    bra	    test_9
+    retlw   0x06
+test_9:
+    movlw   0xDD	
+    cpfseq  combineddata	
+    bra	    test_A
+    retlw   0x09
+test_A:
+    movlw   0xE7
+    cpfseq  combineddata	
+    bra	    test_B
+    retlw   0x0F
+test_B:
+    movlw   0xED
+    cpfseq  combineddata	
+    bra	    test_C
+    retlw   0x0D
+test_C:
+    movlw   0xEE
+    cpfseq  combineddata	
+    bra	    test_D
+    retlw   0x0C
+test_D:
+    movlw   0xDE
+    cpfseq  combineddata	
+    bra	    test_E
+    retlw   0x0B
+test_E:
+    movlw   0xBE
+    cpfseq  combineddata	
+    bra	    test_F
+    retlw   0x00
+test_F:
+    movlw   0x7E
+    cpfseq  combineddata	
+    bra	    invalid
+    retlw   0x0A
+invalid:
+    bra	    keypad_output
 
-bigdelay:
-	call delay
-	call delay
-	call delay
-	call delay 
-	call delay
-	call delay
-	call delay
-	call delay
-	call delay 
-	call delay
-	return
 
 
-
-
-
+	
