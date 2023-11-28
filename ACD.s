@@ -1,6 +1,7 @@
 #include <xc.inc>
 
-global  ADC_Setup, ADC_Read    
+;global  ADC_Setup, ADC_Read   
+global	ADC_Read
     
 psect	adc_code, class=CODE
     
