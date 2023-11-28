@@ -1,8 +1,10 @@
 #include <xc.inc>
 
 extrn	UART_Setup, UART_Transmit_Message  ; external subroutines
-extrn	LCD_Setup, LCD_Write_Message, LCD_clear,keypad_output,LCD_Send_Char_D
+extrn	LCD_Setup, LCD_Write_Message, LCD_clear,keypad_output, LCD_Send_Char_D, LCD_Write_Hex 
 extrn	converter
+extrn	DAC_Setup, DAC_Int_Hi
+extrn	ADC_Setup, ADC_Read	
     
 psect	udata_acs   ; reserve data space in access ram
 counter:    ds 1    ; reserve one byte for a counter variable
@@ -61,6 +63,15 @@ loop: 	tblrd*+			; one byte from PM to TABLAT, increment TBLPRT
 	goto	$		; goto current line in code
 
 	; a delay subroutine if you need one, times around loop in delay_count
+	
+measure_loop:
+	call	ADC_Read
+	movf	ADRESH, W, A
+	call	LCD_Write_Hex
+	movf	ADRESL, W, A
+	call	LCD_Write_Hex
+	goto	measure_loop		; goto current line in code	
+
 delay:	decfsz	delay_count, A	; decrement until zero
 	bra	delay
 	return
