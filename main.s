@@ -5,12 +5,10 @@ extrn	UART_Setup, UART_Transmit_Message  ; external subroutines
 extrn	LCD_Setup, LCD_Write_Message, LCD_clear,keypad_output, LCD_Send_Char_D, LCD_Write_Hex 
 extrn	converter
 extrn	DAC_Setup, DAC_Int_Hi
-extrn	ADC_Setup, ADC_Read	
-    
-extrn	LCD_Setup
+extrn	ADC_Read	
 extrn	Init_piano
 extrn	ADC_Setup, Change_Freq
-extrn	DAC_Setup, DAC_Int_Hi, Clear_Recording, freq_replay
+extrn	Clear_Recording, freq_replay
     
 psect	udata_acs   ; reserve data space in access ram
 counter:    ds 1    ; reserve one byte for a counter variable
@@ -38,7 +36,7 @@ rst: 	org 0x0
 int_hi:	
 	org	0x0008	; high priority interrpy
 	movf	freq_rollover, W, A	; Move freq_rollover to W
-	btfsc	Replay, 0, A
+	btfsc	Replay, 0, A		; Bit Test f, Skip if Clear
 	movf	freq_replay, W, A	; Move replay to W if replay mode enabled
 	goto	DAC_Int_Hi	
 	
@@ -51,7 +49,7 @@ setup:	bcf	CFGS	; point to Flash program memory
 	call	ADC_Setup
 	call	DAC_Setup
 	setf	TRISC, A    ; all input (control unit for start & stop replay / recording and clear memory) 
-;	goto	start
+	goto	start
 	goto	main
 	
 	; ******* Main programme ****************************************
@@ -64,14 +62,16 @@ start: 	lfsr	0, myArray	; Load FSR0 with address in RAM
 	movwf	TBLPTRL, A		; load low byte to TBLPTRL
 	movlw	myTable_l	; bytes to read
 	movwf 	counter, A		; our counter register
+	goto	main
 	
 main:
-	btfss	Replay, 0, A
+	btfss	Replay, 0, A		; Bit Test File, Skip if Set
 	call	Change_Freq		; Stores detected input to W
 	movwf	freq_rollover, A	; Move W to freq-rollover
 	
 	btfsc	PORTC, 0, A      ; If Pin 0 of Port C pressed, set Recording True
-	bsf	Recording, 0, A
+	bsf	Recording, 0, A	    ; Bit ?b? of the register indicated by FSR2,
+				    ; offset by the value ?k?, is set
 	
 	btfsc	PORTC, 1, A	  ; If Pin 1 of Port C pressed, set Recording False
 	bcf	Recording, 0, A
@@ -83,7 +83,7 @@ main:
 	call	Replay_Music
 	
 	btfsc	PORTC, 4, A      ; If Pin 4 of Port C pressed, Set Replay False
-	bcf	Replay, 0, A
+	bcf	Replay, 0, A	; Bit ?b? in register ?f? is cleared.
 	
 
 	movlw	0xAA		; Add in some delay to reduce boucing issues
