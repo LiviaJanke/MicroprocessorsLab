@@ -62,13 +62,13 @@ DAC_Int_Hi:	; Outputs Square pulse (Uncomment to output sine with DAC)
 	movwf	TMR0H, A	
 	movff	freq_rollover, TMR0L, A	; assign to the lower 8 bits
 	tstfsz	freq_rollover, A
-	;bcf	LATH, 0, A	; control signal
+	bcf	LATH, 0, A	; control signal
 	call	Squarewave
-	;dcfsnz	counter1, A	  
-	;call	Load_waveform ; Load Lookup table waveform
-	;tblrd*+			; move along table
-	;movff	TABLAT, LATJ, A ; move value from table to port J
-	;bsf	LATH, 0, A
+	dcfsnz	counter1, A	  
+	call	Load_waveform ; Load Lookup table waveform
+	tblrd*+			; move along table
+	movff	TABLAT, LATJ, A ; move value from table to port J
+	bsf	LATH, 0, A
 	bcf	TMR0IF		; clear interrupt flag
 	retfie	f		; fast return from interrupt
 
@@ -124,9 +124,9 @@ DAC_Setup:
 	
 	bsf	GIE		; Enable all interrupts
 	
-;	bcf	CFGS		; set up table
-;	bsf	EEPGD
-;	call	Load_waveform
+	bcf	CFGS		; set up table
+	bsf	EEPGD
+	call	Load_waveform
 	return
 	
 Load_waveform:	    ; For outputing from lookup table
