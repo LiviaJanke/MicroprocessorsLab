@@ -63,19 +63,21 @@ main:
 	org	0x0
 	bsf	TRISB, RBG	; Set PORTB as input
 	bsf	TRISE, REE
-	bsf	TRISJ, RJDs	; Set PORTH as input
+	bsf	TRISJ, RJGs	; Set PORTH as input
 	bsf	TRISC, RCsawtooth
 
 	org	0x100		    ; Main code starts here at address 0x100
 
 ; add a loop to check for recording and playback?	
+; or add this after note check in the main code?
+	
 	
 change_signal:
 	btfsc	PORTC,RCsawtooth	;check if want to change signal
 	goto	sawtooth
 	btfsc	PORTC,RCsine
-	;call	DAC_Int_Hi_sine
-	goto	sine
+	call	DAC_Int_Hi_sine
+	;goto	sine
 	btfsc	PORTC,RCsquare
 	call	DAC_Int_Hi_square
 	goto	change_signal			;loop
