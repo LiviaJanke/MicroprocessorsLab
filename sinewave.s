@@ -63,7 +63,7 @@ RCsquare	equ	3
 psect	dac_code, class=CODE
 
 
-DAC_Int_Hi_sine:	; Outputs Square pulse (Uncomment to output sine with DAC)
+DAC_Int_Hi_sine:	; Outputs sine with DAC
 	movlw	0xFF
 	movwf	freq_rollover, A
 	;btfss	TMR0IF		; check that this is timer0 interrupt
@@ -73,7 +73,7 @@ DAC_Int_Hi_sine:	; Outputs Square pulse (Uncomment to output sine with DAC)
 	;movff	freq_rollover, TMR0L, A	; assign to the lower 8 bits
 	;tstfsz	freq_rollover, A
 	;bcf	LATH, 0, A	; control signal
-	call	Squarewave
+	;call	Squarewave
 	dcfsnz	counter1, A	  
 	call	Load_waveform ; Load Lookup table waveform
 	tblrd*+			; move along table
