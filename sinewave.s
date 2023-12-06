@@ -2,7 +2,7 @@ psect	dac_code, class=CODE
 #include <xc.inc>
     
 extrn	change_signal, detect_notes
-global	DAC_Setup_sine, DAC_Int_Hi_sine, Load_waveform
+global	DAC_Setup_sine, DAC_Int_Hi_sine, Load_waveform 
 
 psect	data
 	
