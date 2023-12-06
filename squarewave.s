@@ -27,7 +27,7 @@ psect	dac_code, class=CODE
 
 
 DAC_Int_Hi_square:	; Outputs Square pulse (Uncomment to output sine with DAC)
-	movlw	0xFF
+	;movlw	0xFF
 	movwf	freq_rollover, A
 	;btfss	TMR0IF		; check that this is timer0 interrupt
 	;bra	Record		; Branch to Recording if timer1 interrupt    
@@ -41,9 +41,9 @@ DAC_Int_Hi_square:	; Outputs Square pulse (Uncomment to output sine with DAC)
 	;call	Load_waveform ; Load Lookup table waveform
 	;tblrd*+			; move along table
 	;movff	TABLAT, LATD, A ; move value from table to port J
-	;call	detect_notes
-	;call	delay
-	;bsf	LATH, 0, A
+	call	detect_notes
+	call	delay
+	bsf	LATH, 0, A
 	bcf	TMR0IF		; clear interrupt flag
 	;retfie	f		; fast return from interrupt
 	btfsc	PORTC,RCchange	;check if want to change signal
@@ -102,8 +102,8 @@ DAC_Setup_square:
 	
 	bsf	GIE		; Enable all interrupts
 	
-	bcf	CFGS		; set up table
-	bsf	EEPGD
+	;bcf	CFGS		; set up table
+	;bsf	EEPGD
 	;call	Load_waveform
 	return
 	
