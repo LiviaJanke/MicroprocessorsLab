@@ -68,12 +68,14 @@ main:
 
 	org	0x100		    ; Main code starts here at address 0x100
 
+; add a loop to check for recording and playback?	
+	
 change_signal:
 	btfsc	PORTC,RCsawtooth	;check if want to change signal
 	goto	sawtooth
 	btfsc	PORTC,RCsine
-	call	DAC_Int_Hi_sine
-	;goto	sine
+	;call	DAC_Int_Hi_sine
+	goto	sine
 	btfsc	PORTC,RCsquare
 	call	DAC_Int_Hi_square
 	goto	change_signal			;loop
@@ -100,20 +102,32 @@ test:
 
 	goto 	0x0		    ; Re-run program from start
 
+	
 sine:
     	movlw	0xFF
-	movwf	freq_rollover, A
+	movwf	TRISD, A
+	bra	test_sine
+	
+loop_sine:
 	dcfsnz	counter1, A	  
 	call	Load_waveform ; Load Lookup table waveform
 	tblrd*+			; move along table
-	movff	TABLAT, LATD, A ; move value from table to port J
+	movff	TABLAT, LATD, A ; move value from table to port D
 	call	detect_notes
-	call	delay
 	bsf	LATH, 0, A
-	bcf	TMR0IF		; clear interrupt flag
+	bcf	TMR0IF	
+	
+test_sine:
+	movwf	0x06, A	    ; Test for end of loop condition
+	movlw 	0xFF	    ; The count down max
+	cpfsgt 	0x06, A
+	call	delay	 
 	btfsc	PORTC,RCchange	;check if want to change signal
 	goto	change_signal	;return to choose signal
-	goto	sine
+	
+	bra	loop_sine
+	
+	goto	0x0
 
 	
 detect_notes:
