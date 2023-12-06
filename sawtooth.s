@@ -1,6 +1,7 @@
 #include <xc.inc>
 
 extrn	DAC_Int_Hi_sine, DAC_Int_Hi_square
+extrn	DAC_Setup_sine, DAC_Setup_square
 global	change_signal, detect_notes
 	
 psect	code, abs
