@@ -3,6 +3,7 @@
 extrn	DAC_Int_Hi_sine, DAC_Int_Hi_square
 extrn	DAC_Setup_sine, DAC_Setup_square
 extrn	Load_waveform
+extrn	Record, Replay_Music
 global	change_signal, detect_notes
 	
 psect	code, abs
@@ -42,11 +43,11 @@ RJGs	equ 0
 RCchange	equ	0	
 RCsawtooth	equ	1
 RCsine		equ	2
-RCsquare	equ	3
-RCRecordstart	equ	4
-RCRecordstop	equ	5
-RCReplay	equ	6
-RCClear		equ	7
+;RCsquare	equ	3
+RCRecordON	equ	3
+RCRecordOFF	equ	4
+RCReplay	equ	5
+;RCClear	equ	7
 	
 
 		
@@ -61,6 +62,8 @@ freq_replay: ds 1
 	  	    
 main:
 	org	0x0
+	bcf	CFGS		; point to Flash program memory  
+	bsf	EEPGD		; access Flash program memory
 	bsf	TRISB, RBG	; Set PORTB as input
 	bsf	TRISE, REE
 	bsf	TRISJ, RJGs	; Set PORTH as input
@@ -78,8 +81,9 @@ change_signal:
 	btfsc	PORTC,RCsine
 	call	DAC_Int_Hi_sine
 	;goto	sine
-	btfsc	PORTC,RCsquare
-	call	DAC_Int_Hi_square
+;	btfsc	PORTC,RCsquare
+;	call	DAC_Int_Hi_square
+	;goto	square_wave
 	goto	change_signal			;loop
 	
 	
@@ -97,7 +101,11 @@ test:
 	movwf	0x06, A	    ; Test for end of loop condition
 	movlw 	0xFF	    ; The count down max
 	cpfsgt 	0x06, A
-	call	delay	 
+	btfsc	PORTC, RCRecordON
+	call	Record
+	btfsc	PORTC, RCReplay
+	call	Replay_Music
+	call	delay	  ; generates freqency
 	btfsc	PORTC,RCchange	;check if want to change signal
 	goto	change_signal			;return to choose signal
 	bra 	loop		    ; Not yet finished goto start of loop again
@@ -123,13 +131,14 @@ test_sine:
 	movwf	0x06, A	    ; Test for end of loop condition
 	movlw 	0xFF	    ; The count down max
 	cpfsgt 	0x06, A
-	call	delay	 
+	call	delay	    ; generates note?
 	btfsc	PORTC,RCchange	;check if want to change signal
 	goto	change_signal	;return to choose signal
 	
 	bra	loop_sine
 	
 	goto	0x0
+
 
 	
 detect_notes:
