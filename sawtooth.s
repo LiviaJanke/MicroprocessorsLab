@@ -1,7 +1,6 @@
 #include <xc.inc>
 
 extrn	DAC_Int_Hi_sine, DAC_Int_Hi_square
-extrn	DAC_Setup_sine, DAC_Setup_square
 global	change_signal, detect_notes
 	
 psect	code, abs
@@ -45,7 +44,10 @@ RJGs	equ 0
 RCchange	equ	0	
 RCsawtooth	equ	1
 RCsine		equ	2
-RCsquare	equ	3
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+RCRecordON	equ	4
+RCRecordOFF	equ	5
+RCReplay	equ	3
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 delay_count:ds 1    ; reserve one byte for counter in the delay routine
@@ -53,32 +55,56 @@ freq_rollover: ds 1
 delay_num:  ds 1
 Recording:  ds 1
 Replay: ds 1
-
-	    
+seq_array: ds 120
+    
+note_val equ 0x04   
 	    
 	    
 main:
 	org	0x0
+	;org 0x08
+	;retfie
+	;org 0x18
+	;retfie
 	bsf	TRISB, RBG	; Set PORTB as input
 	bsf	TRISE, REE
 	bsf	TRISJ, RJDs	; Set PORTH as input
 	bsf	TRISC, RCsawtooth
+	
+	;bsf	TRISC,2,A ; configure CCP1 pin for input
+	;movlw	0x81 ; use Timer1 as the time base
+	;movwf	T3CON,A ; of CCP1 capture
+	;bcf	CCP1IE,A ; disable CCP1 capture interrupt
+	;movlw	0x81 ; enable Timer1, prescaler set to 1,
+	;movwf	T1CON,A ; 16-bit, y use instruction cycle clock
+	;movlw	0x03 ; set CCP1 to capture on every edge
+	;movwf	CCP1CON,A ; "
+	;bcf	CCP1IF,A ; clear the CCP1IF flag
 
 	;banksel TRISB         ; Select bank for TRISB register
-        
+        bsf     TMR0IE ; Enable Timer0 overflow interrupt
+        bsf	GIE    ; Enable global interrupts
+	movlw	10000111B	; Set timer0 to 16-bit, 42.5kHz
+	movwf	T0CON, A
+	clrf    TMR0          ; Clear Timer0
+        bsf     T0CON, 7 ; Turn on Timer0
 	org	0x100		    ; Main code starts here at address 0x100
+	
 change_signal:
-	btfsc	PORTC,RCsawtooth	;check if want to change signal
+	;btfsc	PORTC,RCsawtooth	;check if want to change signal
 	goto	sawtooth
-	btfsc	PORTC,RCsine
-	call	DAC_Int_Hi_sine
-	btfsc	PORTC,RCsquare
-	call	DAC_Int_Hi_square
-	goto	change_signal			;loop
+	;btfsc	PORTC,RCsine
+	;call	DAC_Int_Hi_sine
+	;btfsc	PORTC,RCsquare
+	;call	DAC_Int_Hi_square
+	;goto	change_signal			;loop
 	
 ;sine:
 	
 sawtooth:
+	
+
+	
 	movlw 	0x0
 	movwf	TRISD, A	; Port D all outputs
 	
@@ -92,20 +118,44 @@ sawtooth:
 	;movlw	0x0
 	;movwf	TRISJ, A
 ;	bcf	PORTJ, 1 ,0
+	
 	bra 	test
 loop:
 	call	detect_notes
+	
+	;movf    TMR0, W       ; Read Timer0 value
+	;incf    button_duration, W ; Increment the memory location for the next duration
+	;movwf   button_duration          ; Store the duration in the current memory location
+	
+
+	;bcf     T0CON, 7
+        ;movwf   0x08 ; Store the duration
+	;call	change_sawtooth
+	
+	;btfsc	PORTC,RCRecordON
+
+	;call	store_sawtooth
 	movff 	0x06, PORTD
 	incf 	0x06, W, A
 test:
 	movwf	0x06, A	    ; Test for end of loop condition
 	movlw 	0xFF	    ; The count down max
 	cpfsgt 	0x06, A
-	;call	detect_notes
-	;call	freq_change ;input the frequency number
+	call	detect_notes
+	;movwf	0xFFF
+	cpfseq	0x0F	; compare file register to previously played note
+	call	record_time	;when note is different, store time
+	movwf	0x0F
+	;btfss	CCP1IF,A ; g wait for the first edge to arrive
+	
 	call	delay	 
 	btfsc	PORTC,RCchange	;check if want to change signal
 	goto	change_signal			;return to choose signal
+	call	hugedelay
+	call	deaddelay
+	;call	deaddelay
+	
+	
 	bra 	loop		    ; Not yet finished goto start of loop again
 	;movff 	0x06, PORTJ
 ;	bsf	PORTJ, 1, 0
@@ -116,10 +166,19 @@ test:
 detect_notes:
 	;banksel TRISB    ; Select bank for BUTTON_PIN
 	call	note_check
-        ;btfsc   PORTB,ButtonC    ; Test if the button pin is clear (pressed)
-        ;goto	NoteC	    ; If pressed, jump to button_pressed
-        ;movff	0x22, freq
-	;goto    default           ; Otherwise, continue looping
+	return
+record_time:
+	;movff	CCPR1H,PRODH ; save the first edge
+	;movff	CCPR1L,PRODL
+	;;;;;;;;;;;;;;;;;;;;;;;;;;
+	movff   TMR0H, PRODH       ; Read Timer0 value
+	movff	TMR0L, PRODL
+	;incf    button_duration, W ; Increment the memory location for the next duration
+	;movwf   button_duration          ; Store the duration in the current memory location
+	; need to store contents of 0x03 (the frequency corresponding to the note) before decrementing to store the note
+	;movlw	note_val
+	
+	
 	return
 note_check:
 	;port B note check
@@ -176,10 +235,7 @@ note_check:
 	;if all NO, go to default
 	goto	default
 	return
-default:
-	movlw	0xFF
-	movwf	0x03
-	return
+
 
 ;freq_change:
 ;	movlw	freq
@@ -189,6 +245,11 @@ default:
 	
 	
 ; NOTE Branches;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+default:
+	movlw	0xFF
+	movwf	0x03
+	movlw	0x02
+	return
 ;PORT J notes
 NoteRJGs:
 	movlw	0x45 
@@ -293,5 +354,48 @@ delay:
 	decfsz	0x03
 	bra delay
 	return
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+bigdelay:
+	call	delay
+	call	delay
+	call	delay
+	call	delay
+	call	delay
+	call	delay
+	return
+hugedelay:
+	call	bigdelay
+	call	bigdelay
+	call	bigdelay
+	call	bigdelay
+	call	bigdelay
+	call	bigdelay
+	call	bigdelay
+	return
+deaddelay:
+	call	hugedelay
+	call	hugedelay
+	call	hugedelay
+	call	hugedelay
+	call	hugedelay
+	call	hugedelay
+	call	hugedelay
+	call	hugedelay
+	call	hugedelay
+	call	hugedelay
+	return
+	
+;store_sawtooth:
+;	clrf    TMR0          ; Clear Timer0
+;       bsf     T0CON, 7 ; Turn on Timer0
+;	return
+	
+	
+;change_sawtooth:
+;	movf    TMR0, W       ; Read Timer0 value
+;        movwf   0x08 ; Store the duration
+;	bcf     T0CON, 7
+;	return
+	
+	
 end	sawtooth
