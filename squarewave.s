@@ -2,7 +2,7 @@ psect	dac_code, class=CODE
 #include <xc.inc>
     
 extrn	change_signal, detect_notes
-global	DAC_Setup_square, DAC_Int_Hi_square
+global	DAC_Setup_square, DAC_Int_Hi_square, Record, Store_note, Replay_Music
 
 psect	data
     
@@ -57,25 +57,55 @@ Squarewave:
 
 	return
 	
-;Record:
+Record:
+    
+	;BCF	EECON1, EEPGD ; Point to DATA memory
+	;BCF	EECON1, CFGS ; Access EEPROM
+	;BSF	EECON1, WREN ; Enable writes
+	
 	;btfsc	Recording, 0, A	    ; Check Recording mode enabled
-	;call	Store_note
+	call	Store_note
 	;btfsc	Replay, 0, A	    ; Check Replay mode enabled
 	;movff	POSTINC0, freq_replay, A    
 	;bcf	TMR1IF		; clear interrupt flag
 	;retfie	f		; fast return from interrupt
-	;return
+	return
 	
-;Store_note: ;Store freq_rollover into data memory
-;	movlw	0x0E		
-;	cpfslt	FSR0H, A	; rollover when FSR0 points to bank 15
-;	lfsr	0, 0x200        ; Start memory storage at Bank 2, use pointer 0
-;	incf	LATH, A
-;	movff	freq_rollover, POSTINC0, A
-;	return
+Store_note: ;Store freq_rollover into data memory
 	
-;Clear_Recording:
-;	lfsr	0, 0x200
+    	movlw	0x0E		
+	cpfslt	FSR0H, A	; rollover when FSR0 points to bank 15
+	lfsr	0, 0x200        ; Start memory storage at Bank 2, use pointer 0
+	incf	LATH, A
+	movff	0x03, POSTINC0, A
+	return
+	
+	
+	;movlw	0x03
+	;MOVWF   EECON2
+	;BSF	EECON1, WR
+	;BTFSC	EECON1, WR
+	;cpfslt	FSR0H, A	; rollover when FSR0 points to bank 15
+	;lfsr	0, 0x200        ; Start memory storage at Bank 2, use pointer 0
+	;incf	LATH, A
+	;movff	0x03, POSTINC0, A
+	return
+
+Replay_Music:	; Called when RC3 pressed
+	lfsr	0, 0x200        ; Start memory storage at Bank 2, use FSR0
+	;movff	POSTINC0, 0x03, A 
+	
+
+	;BCF EECON1, EEPGD ; Point to DATA memory
+	;BCF EECON1, CFGS ; Access EEPROM
+	;BSF EECON1, RD ; EEPROM Read
+	;NOP
+	;MOVF EEDATA, W ; W = EEDATA
+	return	
+	
+	
+Clear_Recording:
+	lfsr	0, 0x200
 Next:				
 	clrf	POSTINC0, A	    ;Clear storage
 	movlw	0x0E
