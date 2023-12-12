@@ -107,11 +107,11 @@ main:
 	movlw	0xEA
 	movwf	TBLPTRL, A		; load low byte to TBLPTRL
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        bsf     TMR0IE ; Enable Timer0 overflow interrupt
-        bsf	GIE    ; Enable global interrupts
 	movlw	10000111B	; Set timer0 to 16-bit, prescaler:1/256
 	movwf	T0CON, A
-	clrf    TMR0          ; Clear Timer0
+	bsf     TMR0IE ; Enable Timer0 overflow interrupt
+        bsf	GIE    ; Enable global interrupts
+	;clrf    TMR0          ; Clear Timer0
         
 	org	0x100		    ; Main code starts here at address 0x100
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -189,9 +189,10 @@ start_recording:
 	movlw	10000000B
 	movwf	TRISF
 	lfsr	0, Data_array	;point to the right location
+	clrf	TMR0L		;reset timer high word
+	clrf	TMR0H		;reset timer low word
 	bsf     T0CON, 7 ; Turn on Timer0
-	clrf	0x0F	    ;clear the pre-stored comparator in 0x0F and prepare for recording
-	
+	;clrf	0x0F	    ;clear the pre-stored comparator in 0x0F and prepare for recording
 	return
 stop_recording:
 	bcf	PORTF,7	    ;clear the recording indication pin
@@ -200,18 +201,33 @@ stop_recording:
 	bcf     T0CON, 7 ; Turn off Timer0
 	return
 recordON:
+	movlw	0x00
+	cpfsgt	FSR0L
+	movff	0x0E,0x0F
+	movlw	0x00
+	cpfsgt	FSR0L
+	movff	0x03, POSTINC0
+	movlw	0x01
+	cpfslt	FSR0L
+	call	after_note
+	return
+after_note:
+	movf	0x0E, W
 	cpfseq	0x0F	    ; test if a different note is played
 	call	recording	;when note is different, store time
 	return
 recording:
-	movwf	0x0F	    ;move the note indication into 0x0F for comparison in the next round
-	movff	0x03,POSTINC0	;move frequency to memory
+	;movwf	0x0F	    ;move the note indication into 0x0F for comparison in the next round
+	;movff	0x03,POSTINC0	;move frequency to memory
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	movff	TMR0H,POSTINC0      ; Write the high word to the current location in the array
-	movff	TMR0L,POSTINC0      ; Write the low word to the current location 
+	movff	TMR0L,POSTINC0      ; Write the high word to the current location in the array
+	movff	TMR0H,POSTINC0      ; Write the low word to the current location 
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	movff	0x0E,0x0F	    ;move the note indication into 0x0F for comparison in the next round
+	movff	0x03,POSTINC0	;move frequency to memory
 	;;;;;;;;;;;;;;;;;;;reset and restart the timer for the next stage change
-	clrf	TMR0H		;reset timer high word
-	clrf	TMR0L		;reset timer low word
+	clrf	TMR0L		;reset timer high word
+	clrf	TMR0H		;reset timer low word
 	;bsf     T0CON, 7	    ; Turn on Timer0 again
 	return
 ;Replay Branches;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -230,6 +246,7 @@ stop_replay:
 	movwf	TRISF
 	return
 replayON:
+	clrf	0x01
 	tstfsz	0x0B	    ;test if low word of duration is 0, if 0, test high word
 	goto	duration    ;low word of duration is not 0, so maintain previous frequency
 	tstfsz	0x0A	    ;test if high word of duration is also 0, if 0, load new note in memory
@@ -242,11 +259,11 @@ music_load:
 	incf	FSR0L		;increment FSR0 low word
 	btfsc	STATUS,2	;test if FSR0L incremented to 0xFF
 	incf	FSR0H		;if overflowed, increment FSR0H
-	movff	INDF0,0x0A		;move high word of duration to 0x0A
+	movff	INDF0,0x0B		;move high word of duration to 0x0A
 	incf	FSR0L		;same job as the previous one
 	btfsc	STATUS,2	
 	incf	FSR0H		
-	movff	INDF0,0x0B		;move low word of duration to 0x0B
+	movff	INDF0,0x0A		;move low word of duration to 0x0B
 	incf	FSR0L		;same job as the previous ones
 	btfsc	STATUS,2	
 	incf	FSR0H	
@@ -276,7 +293,7 @@ condition:
 	movlw	0x10
 	movwf	0x02
 	incf	0x01
-	movlw	0xCF
+	movlw	0x01
 	cpfslt	0x01
 	goto	replayON
 	return
@@ -355,6 +372,7 @@ default:
 	movlw	0xFF
 	movwf	0x03, A
 	movlw	0x18
+	movwf	0x0E
 	return
 ;PORT J notes
 NoteRJGs:
@@ -443,41 +461,49 @@ NoteRBC:
 	movlw	0x20 
 	movwf	0x03, A
 	movlw	0x07
+	movwf	0x0E
 	return
 NoteRBCs:
 	movlw	0x1D 
 	movwf	0x03, A
 	movlw	0x06
+	movwf	0x0E
 	return
 NoteRBD:
 	movlw	0x1A 
 	movwf	0x03, A
 	movlw	0x05
+	movwf	0x0E
 	return
 NoteRBDs:
 	movlw	0x17 
 	movwf	0x03, A
 	movlw	0x04
+	movwf	0x0E
 	return
 NoteRBE:
 	movlw	0x14 
 	movwf	0x03, A
 	movlw	0x03
+	movwf	0x0E
 	return	
 NoteRBF:
 	movlw	0x11 
 	movwf	0x03, A
 	movlw	0x02
+	movwf	0x0E
 	return	
 NoteRBFs:
 	movlw	0x0E 
 	movwf	0x03, A
 	movlw	0x01
+	movwf	0x0E
 	return
 NoteRBG:
 	movlw	0x0C 
 	movwf	0x03, A
 	movlw	0x19
+	movwf	0x0E
 	return
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;	
 freq:
