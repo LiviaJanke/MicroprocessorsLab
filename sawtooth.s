@@ -132,13 +132,13 @@ change_signal:
 	;movlw	0x01
 	;movwf	0x105
 	
-	btfsc	PORTC,RCsawtooth	;check if want to change signal
+	;btfsc	PORTC,RCsawtooth	;check if want to change signal
 	goto	sawtooth
 	;btfsc	PORTC,RCsine
 	;call	DAC_Int_Hi_sine
 	;btfsc	PORTC,RCsquare
 	;call	DAC_Int_Hi_square
-	goto	change_signal		;loop to wait for choice of waveform
+	;goto	change_signal		;loop to wait for choice of waveform
 	
 sawtooth:   ;sawtooth waveform branch
 	movlw 	0x0
@@ -157,10 +157,13 @@ test:
 	btfsc	TRISF,7	    ;test if record mode is turned on
 	call	recordON    ;if yes go to recording branches
 	btfsc	TRISF,6	    ;test if replay mode is turned on
-	;call	replayON    ;if yes go to replaying branches
-	call	prescaler
+	call	replayON    ;if yes go to replaying branches
+	;call	prescaler
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	call	freq	    ;frequency variable 
+	btfsc	TRISF,6	    ;test if replay mode is turned on
+	call	skip
+	btfss	TRISF,6	    ;test if replay mode is turned on
+	call	freq	    ;frequency variable
 	btfsc	PORTC,RCchange	;check if want to change signal
 	goto	change_signal			;return to choose signal
 	btfsc	PORTC,RCRecordON    ;test if manual input to turn on record mode
@@ -177,8 +180,8 @@ test:
 	;call	hugedelay
 	;call	deaddelay
 	;call	deaddelay
-	btfsc	TRISF,6	    ;test if record mode is turned on
-	call	delay    ;if yes go to recording branches
+	;btfsc	TRISF,6	    ;test if record mode is turned on
+	;call	delay    ;if yes go to recording branches
 	;movlw 	0xFF	    ; The count down max
 	;cpfsgt 	0x06, A	    ; Test if the counter reached the max count number
 	goto 	loop		    ; Re-run program from start
@@ -247,6 +250,7 @@ stop_replay:
 	return
 replayON:
 	clrf	0x01
+	movff	0x00, 0x03	;move the pre-saved backup frequency value to 0x03 for this round of delay
 	tstfsz	0x0B	    ;test if low word of duration is 0, if 0, test high word
 	goto	duration    ;low word of duration is not 0, so maintain previous frequency
 	tstfsz	0x0A	    ;test if high word of duration is also 0, if 0, load new note in memory
@@ -296,6 +300,11 @@ condition:
 	movlw	0x01
 	cpfslt	0x01
 	goto	replayON
+	return
+skip:
+	movlw	0xFF
+	cpfseq	0x03
+	call	freq
 	return
 ;Clear Memory;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 clear_recording:	
@@ -500,7 +509,7 @@ NoteRBFs:
 	movwf	0x0E
 	return
 NoteRBG:
-	movlw	0x0C 
+	movlw	0x11 
 	movwf	0x03, A
 	movlw	0x19
 	movwf	0x0E
