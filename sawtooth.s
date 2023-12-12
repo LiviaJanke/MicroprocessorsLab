@@ -20,8 +20,8 @@ RBD	equ 2
 RBDs	equ 3
 RBE	equ 4
 RBF	equ 5
-RBFs	equ 6
-RBG	equ 7
+;RBFs	equ 6
+;RBG	equ 7
 
 ;port E notes
 REB	equ 7
@@ -160,9 +160,9 @@ test:
 	call	replayON    ;if yes go to replaying branches
 	;call	prescaler
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	btfsc	TRISF,6	    ;test if replay mode is turned on
-	call	skip
-	btfss	TRISF,6	    ;test if replay mode is turned on
+	;btfsc	TRISF,6	    ;test if replay mode is turned on
+	;call	skip
+	;btfss	TRISF,6	    ;test if replay mode is turned on
 	call	freq	    ;frequency variable
 	btfsc	PORTC,RCchange	;check if want to change signal
 	goto	change_signal			;return to choose signal
