@@ -20,8 +20,8 @@ RBD	equ 2
 RBDs	equ 3
 RBE	equ 4
 RBF	equ 5
-;RBFs	equ 6
-;RBG	equ 7
+RBFs	equ 6
+RBG	equ 7
 
 ;port E notes
 REB	equ 7
@@ -63,11 +63,16 @@ Recording:  ds 1
 Replay: ds 1
 
 ;ARRAY_LENGTH      equ 10     
-	    
-	    
+
+rst:	org	0x0000
+	goto	main
+	
+replay_hi:
+	org	0x0008
+	goto	replayON
 	    
 main:
-	org	0x0
+	org	0x0100
 	bsf	TRISB, RBG	; Set PORTB as input
 	bsf	TRISE, REE
 	bsf	TRISJ, RJDs	; Set PORTH as input
@@ -77,7 +82,7 @@ main:
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	bcf	CFGS	; point to Flash program memory  
 	bsf	EEPGD 	; access Flash program memory
-	movlw	0x10
+	movlw	0x55
 	movwf	0x02
 	BANKSEL 0x100
 	clrf	0x100
@@ -93,27 +98,21 @@ main:
 	;bcf	CCP1IF,A ; clear the CCP1IF flag
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	lfsr	0, Data_array 
-	;movlw   LOW(Data_array)    ; Load the low byte of DATA_ARRAY address into W
-	;movwf   FSR0L              ; Load the W register into FSR0L
-	;movlw   HIGH(Data_array)   ; Load the high byte of DATA_ARRAY address into W
-	;movwf   FSR0H              ; Load the W register into FSR0H
-	;movlw	low highword(Data_array)	; address of data in PM
 	movlw	0x01
 	movwf	TBLPTRU, A		; load upper bits to TBLPTRU
-	;movlw	high(Data_array)	; address of data in PM
 	movlw	0xFF
 	movwf	TBLPTRH, A		; load high byte to TBLPTRH
-	;movlw	low(Data_array)	; address of data in PM
 	movlw	0xEA
 	movwf	TBLPTRL, A		; load low byte to TBLPTRL
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	movlw	10000111B	; Set timer0 to 16-bit, prescaler:1/256
 	movwf	T0CON, A
-	bsf     TMR0IE ; Enable Timer0 overflow interrupt
-        bsf	GIE    ; Enable global interrupts
+	movlw	01100000B	; set frequency to 8Mhz
+	movwf OSCCON		; ---
+	;bsf     TMR0IE		; Enable Timer0 overflow interrupt
+        bsf	GIE		; Enable global interrupts
 	;clrf    TMR0          ; Clear Timer0
         
-	org	0x100		    ; Main code starts here at address 0x100
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	
 change_signal:
@@ -251,11 +250,12 @@ stop_replay:
 replayON:
 	clrf	0x01
 	movff	0x00, 0x03	;move the pre-saved backup frequency value to 0x03 for this round of delay
-	tstfsz	0x0B	    ;test if low word of duration is 0, if 0, test high word
-	goto	duration    ;low word of duration is not 0, so maintain previous frequency
-	tstfsz	0x0A	    ;test if high word of duration is also 0, if 0, load new note in memory
-	goto	duration    ;high word of duration is not 0, so maintain previous frequency
+	;tstfsz	0x0B	    ;test if low word of duration is 0, if 0, test high word
+	;goto	duration    ;low word of duration is not 0, so maintain previous frequency
+	;tstfsz	0x0A	    ;test if high word of duration is also 0, if 0, load new note in memory
+	;goto	duration    ;high word of duration is not 0, so maintain previous frequency
 	call	music_load  ;load next note played in memory
+	bsf     TMR0IE		; Enable Timer0 overflow interrupt
 	return
 music_load:
 	movff	INDF0,0x03		;move frequency number into 0x03
@@ -263,11 +263,11 @@ music_load:
 	incf	FSR0L		;increment FSR0 low word
 	btfsc	STATUS,2	;test if FSR0L incremented to 0xFF
 	incf	FSR0H		;if overflowed, increment FSR0H
-	movff	INDF0,0x0B		;move high word of duration to 0x0A
+	movff	INDF0,TMR0L		;move high word of duration to 0x0A
 	incf	FSR0L		;same job as the previous one
 	btfsc	STATUS,2	
 	incf	FSR0H		
-	movff	INDF0,0x0A		;move low word of duration to 0x0B
+	movff	INDF0,TMR0H		;move low word of duration to 0x0B
 	incf	FSR0L		;same job as the previous ones
 	btfsc	STATUS,2	
 	incf	FSR0H	
@@ -291,7 +291,7 @@ prescaler:
 	movff	0x00, 0x03	;move the pre-saved backup frequency value to 0x03 for this round of delay
 	decf	0x02
 	btfsc	STATUS,2
-	call	condition
+	goto	replayON
 	return
 condition:
 	movlw	0x10
@@ -306,6 +306,24 @@ skip:
 	cpfseq	0x03
 	call	freq
 	return
+hi_isr:
+	btfss	INTCON, 2	;TMR0IF
+	goto	end_int
+	bcf	INTCON, 2	;TMR0IF; reset interrupt
+	goto	music_load
+	;movlw	0xAF
+	;movwf	TMR0L
+	;movlw	0x3C
+	;movwf	TMR0H
+     
+	;incf	counter, f ; increment the counter
+     
+	;invert LATD2
+	;movlw	0x4
+	;xorwf	LATD,F
+ 
+end_int:
+	retfie  f;return and reset interrupts
 ;Clear Memory;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 clear_recording:	
 	lfsr	0, Data_array
@@ -555,4 +573,4 @@ deaddelay:
 	return
 	
 	
-end	sawtooth
+end	rst
