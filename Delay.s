@@ -9,6 +9,7 @@ delay:
 	decfsz	0x09
 	bra	delay
 	return
+	
 bigdelay:
 	call	delay
 	call	delay
@@ -17,6 +18,7 @@ bigdelay:
 	call	delay
 	call	delay
 	return
+	
 hugedelay:
 	call	bigdelay
 	call	bigdelay
@@ -26,6 +28,7 @@ hugedelay:
 	call	bigdelay
 	call	bigdelay
 	return
+	
 deaddelay:
 	call	hugedelay
 	call	hugedelay
