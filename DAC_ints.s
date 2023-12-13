@@ -66,18 +66,7 @@ psect	dac_code, class=CODE
 	
 	
 DAC_Int_Hi:	; Outputs Square pulse (Uncomment to output sine with DAC)
-	movwf	freq_rollover, A
-	btfss	TMR0IF		;Test the Timer0 interrupt flag (TMR0IF). If it is clear (skips the next instruction), jump to the Record label.
-	bra	Record		; Branch to Recording if timer1 interrupt    
-	movlw	0xFF
-	movwf	TMR0H, A	
-	movff	freq_rollover, TMR0L, A	; assign to the lower 8 bits
-	tstfsz	freq_rollover, A
 
-	;call	Squarewave
-	call	sawtooth
-	bcf	TMR0IF		; clear interrupt flag
-	retfie	f		; fast return from interrupt
 
 	
 DAC_Setup:
