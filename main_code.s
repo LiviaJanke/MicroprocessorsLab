@@ -1,6 +1,5 @@
 #include <xc.inc>
 
-
 extrn	detect_notes
 extrn	stop_recording, recordON
 extrn	stop_replay, replayON, music_load
@@ -97,7 +96,6 @@ change_signal:
 	movlw	0x01
 	movwf	0x105
 	
-	
 	goto	sawtooth
 
 sawtooth:   ;sawtooth waveform branch
@@ -106,9 +104,11 @@ sawtooth:   ;sawtooth waveform branch
 	movwf	TRISD, A	; Port D all outputs
 	
 	bra 	test
+	
 loop:
 	movff 	0x06, PORTD	;counter codes
 	incf 	0x06, W, A	;counter increment the value in 0x06
+	
 test:
 	movwf	0x06, A	    ; Test for end of loop condition
 	
@@ -142,7 +142,6 @@ start_recording:
 	clrf	TMR0H		;reset timer low word
 	bsf     T0CON, 7 ; Turn on Timer0
 	return
-
 
 start_replay:
 	bsf	PORTF,6	    ;set the replaying indication pin high
