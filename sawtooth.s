@@ -4,6 +4,7 @@
 extrn	DAC_Int_Hi, freq_replay, DAC_Setup
 global	change_signal, detect_notes
 global	Recording, Replay
+global	sawtooth
     
 psect	udata_bank1 ; reserve data anywhere in RAM (here at 0x100)
 Data_array: ds	0x80   ; reserve bytes for data
@@ -86,33 +87,18 @@ setup:
 	goto	start
 
 start:
+	btfss	TRISF, 6		;if replay is on, detect notes should not work
+	call	detect_notes
+	movwf	freq_rollover, A
 	
 	goto	change_signal
     
 	
 change_signal:
 	
-	;BANKSEL 0x100 
-	;movlw	0x03
-	;movwf	0x100
-	;movlw	0x00
-	;movwf	0x101
-	;movlw	0x03
-	;movwf	0x102
-	;movlw	0x02
-	;movwf	0x103
-	;movlw	0x01
-	;movwf	0x104
-	;movlw	0x01
-	;movwf	0x105
-	
-	;btfsc	PORTC,RCsawtooth	;check if want to change signal
+
 	goto	sawtooth
-	;btfsc	PORTC,RCsine
-	;call	DAC_Int_Hi_sine
-	;btfsc	PORTC,RCsquare
-	;call	DAC_Int_Hi_square
-	;goto	change_signal		;loop to wait for choice of waveform
+
 	
 sawtooth:   ;sawtooth waveform branch
 	movlw 	0x0
@@ -125,7 +111,7 @@ loop:
 test:
 	movwf	0x06, A	    ; Test for end of loop condition
 	
-	btfss	TRISF,6		;if replay is on, detect notes should not work
+	
 	call	detect_notes	;detect which note is played
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	btfsc	TRISF,7	    ;test if record mode is turned on
@@ -294,6 +280,8 @@ clear:
 detect_notes:
 	;banksel TRISB    ; Select bank for BUTTON_PIN
 	call	note_check
+	movf 0x03, W    ; Move the content of address 0x03 into the WREG
+	movwf freq_rollover ; Move the WREG content into the variable 'freq_rollover'
 	return
 note_check:
 	;port B note check
