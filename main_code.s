@@ -4,7 +4,8 @@ extrn	detect_notes
 extrn	stop_recording, recordON
 extrn	stop_replay, replayON, music_load
 extrn	delay, bigdelay, hugedelay, deaddelay	      
-
+extrn	Saw_wave, Sine_wave
+    
 psect	udata_bank1 ; reserve data anywhere in RAM (here at 0x100)
 Data_array: ds	0x80   ; reserve bytes for data
 
@@ -116,7 +117,15 @@ test:
 	cpfsgt	FSR0L
 	call	replayON    ;if yes go to replaying branches
 	
-	call	freq	    ;frequency variable
+	;call	freq	    ;frequency variable
+	
+	btfsc	PORTC, RCsawtooth
+	call	Saw_wave
+	
+	btfsc	PORTC, RCsine
+	call	Sine_wave
+	
+	
 	btfsc	PORTC,RCchange	;check if want to change signal
 	goto	change_signal			;return to choose signal
 	btfsc	PORTC,RCRecordON    ;test if manual input to turn on record mode
@@ -172,5 +181,9 @@ freq:
 	decfsz	0x03
 	bra freq
 	return
+
+sine:
+    
+    
 	
 end	rst
