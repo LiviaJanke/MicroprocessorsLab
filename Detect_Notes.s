@@ -36,12 +36,13 @@ RJA	equ 1
 RJGs	equ 0
     
     
-;NOTE Detection Branches;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 detect_notes:
-	;banksel TRISB    ; Select bank for BUTTON_PIN
 	call	note_check
 	return
+	
 note_check:
+    
 	;port B note check
 	btfsc   PORTB,RBC    ; Test if the button pin is clear (pressed)
         goto	NoteRBC	    ; If pressed, jump to button_pressed
@@ -59,6 +60,7 @@ note_check:
         goto	NoteRBFs	    
 	btfsc   PORTB,RBG    
         goto	NoteRBG	    
+	
 	;port F note check
 	btfsc   PORTE,REE    
         goto	NoteREE
@@ -76,6 +78,7 @@ note_check:
         goto	NoteREAs
 	btfsc   PORTE,REB   
         goto	NoteREB
+	
 	;port J note check
 	btfsc   PORTJ,RJDs   
         goto	NoteRJDs
@@ -93,16 +96,19 @@ note_check:
         goto	NoteRJA
 	btfsc   PORTJ,RJGs    
         goto	NoteRJGs
+	
 	;if all NO, go to default
 	goto	default
 	return	
-; NOTE Branches;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	
+; NOTE Branches
 default:
 	movlw	0xFF
 	movwf	0x03, A
 	movlw	0x18
 	movwf	0x0E
 	return
+	
 ;PORT J notes
 NoteRJGs:
 	movlw	0x28 
@@ -152,6 +158,7 @@ NoteRJDs:
 	movlw	0x10
 	movwf	0x0E
 	return
+	
 ;PORT E notes
 NoteREE:
 	movlw	0x13 
@@ -201,6 +208,7 @@ NoteREB:
 	movlw	0x08
 	movwf	0x0E
 	return
+	
 ;PORT B notes
 NoteRBC:
 	movlw	0x08 
