@@ -1,7 +1,7 @@
 #include <xc.inc>
 
 global	detect_notes
-global	RBG, REE, RJDs
+
 
 psect	detect_code, class = CODE
 
