@@ -117,7 +117,7 @@ test:
 	cpfsgt	FSR0L
 	call	replayON    ;if yes go to replaying branches
 	
-	;call	freq	    ;frequency variable
+	
 	
 	btfsc	PORTC, RCsawtooth
 	call	Saw_wave
@@ -125,6 +125,7 @@ test:
 	btfsc	PORTC, RCsine
 	call	Sine_wave
 	
+	;call	freq	    ;frequency variable
 	
 	btfsc	PORTC,RCchange	;check if want to change signal
 	goto	change_signal			;return to choose signal
