@@ -1,6 +1,6 @@
 #include <xc.inc>
 
-extrn	Recording, Replay
+extrn	Recording, Replay, sawtooth
 global	DAC_Setup, DAC_Int_Hi, freq_replay
 
 psect	udata_acs
@@ -64,17 +64,10 @@ RCClear		equ	3
     
 psect	dac_code, class=CODE
 	
-;DAC_Int_Hi:	
-;	btfss	TMR0IF		; check that this is timer0 interrupt
-;	retfie	f		; if not then return
-;	incf	LATJ, F, A	; increment PORTD
-;	bcf	TMR0IF		; clear interrupt flag
-;	retfie	f		; fast return from interrupt
 	
 DAC_Int_Hi:	; Outputs Square pulse (Uncomment to output sine with DAC)
 	movwf	freq_rollover, A
-	btfss	TMR0IF		;Test the Timer0 interrupt flag (TMR0IF).
-				;If it is clear (skips the next instruction), jump to the Record label.
+	btfss	TMR0IF		;Test the Timer0 interrupt flag (TMR0IF). If it is clear (skips the next instruction), jump to the Record label.
 	bra	Record		; Branch to Recording if timer1 interrupt    
 	movlw	0xFF
 	movwf	TMR0H, A	
@@ -86,18 +79,6 @@ DAC_Int_Hi:	; Outputs Square pulse (Uncomment to output sine with DAC)
 	bcf	TMR0IF		; clear interrupt flag
 	retfie	f		; fast return from interrupt
 
-	
-
-;DAC_Setup:
-;	clrf	TRISJ, A	; Set PORTD as all outputs
-;	clrf	LATJ, A		; Clear PORTD outputs
-;	movlw	10000111B	; Set timer0 to 16-bit, Fosc/4/256
-;	movwf	T0CON, A	; = 62.5KHz clock rate, approx 1sec rollover
-;	bsf	TMR0IE		; Enable timer0 interrupt
-;	bsf	GIE		; Enable all interrupts
-;	return
-;	
-;	end
 	
 DAC_Setup:
 	
