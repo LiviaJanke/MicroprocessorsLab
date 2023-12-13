@@ -5,8 +5,6 @@ global stop_recording, recordON
 global	stop_replay, replayON, music_load
 
 psect	record_replay_code, class=CODE
-    
-;Recording Branches;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 stop_recording:
 	bcf	PORTF,7	    ;clear the recording indication pin
@@ -14,6 +12,7 @@ stop_recording:
 	movwf	TRISF
 	bcf     T0CON, 7 ; Turn off Timer0
 	return
+	
 recordON:
 	movlw	0x00
 	cpfsgt	FSR0L
@@ -25,24 +24,24 @@ recordON:
 	cpfslt	FSR0L
 	call	after_note
 	return
+	
 after_note:
 	movf	0x0E, W
 	cpfseq	0x0F	    ; test if a different note is played
 	call	recording	;when note is different, store time
 	return
+	
 recording:
-	;movwf	0x0F	    ;move the note indication into 0x0F for comparison in the next round
-	;movff	0x03,POSTINC0	;move frequency to memory
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 	movff	TMR0L,POSTINC0      ; Write the high word to the current location in the array
 	movff	TMR0H,POSTINC0      ; Write the low word to the current location 
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 	movff	0x0E,0x0F	    ;move the note indication into 0x0F for comparison in the next round
 	movff	0x03,POSTINC0	;move frequency to memory
 	;;;;;;;;;;;;;;;;;;;reset and restart the timer for the next stage change
 	clrf	TMR0L		;reset timer high word
 	clrf	TMR0H		;reset timer low word
-	;bsf     T0CON, 7	    ; Turn on Timer0 again
+	
 	return
     
 stop_replay:
@@ -59,7 +58,7 @@ replayON:
 	tstfsz	TMR0H	    ;test if high word of duration is also 0, if 0, load new note in memory
 	return    ;high word of duration is not 0, so maintain previous frequency
 	call	music_load  ;load next note played in memory
-	;bsf     INTCON, 5    ;TMR0IE		; Enable Timer0 overflow interrupt
+	
 	return
 
 music_load:
@@ -82,7 +81,6 @@ music_load:
 	return
 
 duration:
-	;movff	0x00, 0x03	;move the pre-saved backup frequency value to 0x03 for this round of delay
 	dcfsnz	0x0B		;decrement low word, if 0, proceed to decrement of 0x0A
 	call	multi_delay	;derement of high word 0x0A
 	return
