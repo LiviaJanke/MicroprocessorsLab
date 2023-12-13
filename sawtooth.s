@@ -1,11 +1,21 @@
 #include <xc.inc>
 
 ;extrn	DAC_Int_Hi_sine, DAC_Int_Hi_square
+extrn	DAC_Int_Hi, freq_replay, DAC_Setup
 global	change_signal, detect_notes
-
+global	Recording, Replay
+    
 psect	udata_bank1 ; reserve data anywhere in RAM (here at 0x100)
 Data_array: ds	0x80   ; reserve bytes for data
 
+psect	udata_acs   ; reserve data space in access ram
+delay_count: ds 1    ; reserve one byte for counter in the delay routine
+freq_rollover: ds 1
+delay_num:  ds 1
+Recording:  ds 1
+Replay: ds 1    
+    
+    
 psect	data
 ARRAY_LENGTH   equ 20
    
@@ -20,8 +30,8 @@ RBD	equ 2
 RBDs	equ 3
 RBE	equ 4
 RBF	equ 5
-;RBFs	equ 6
-;RBG	equ 7
+RBFs	equ 6
+RBG	equ 7
 
 ;port E notes
 REB	equ 7
@@ -56,65 +66,29 @@ RCReplaystop	equ	7
 RCClear		equ	3
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
-delay_count:ds 1    ; reserve one byte for counter in the delay routine
-freq_rollover: ds 1
-delay_num:  ds 1
-Recording:  ds 1
-Replay: ds 1
+   
+	    
+rst:	org 0x0
+	goto setup
 
-;ARRAY_LENGTH      equ 10     
-	    
-	    
-	    
-main:
-	org	0x0
-	bsf	TRISB, RBG	; Set PORTB as input
-	bsf	TRISE, REE
-	bsf	TRISJ, RJDs	; Set PORTH as input
-	bsf	TRISC, RCsawtooth
-	bcf	TRISF, 7
-	bcf	TRISF, 6
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	bcf	CFGS	; point to Flash program memory  
+int_hi:	
+	org	0x0008	; high priority interrupt
+	movf	freq_rollover, W, A
+	btfsc	Replay, 0, A
+	movf	freq_replay, W, A
+	goto	DAC_Int_Hi	
+
+setup:
+
+    	bcf	CFGS	; point to Flash program memory  
 	bsf	EEPGD 	; access Flash program memory
-	movlw	0x10
-	movwf	0x02
-	BANKSEL 0x100
-	clrf	0x100
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	;bsf	TRISC,2,A ; configure CCP1 pin for input
-	;movlw	0x81 ; use Timer1 as the time base
-	;movwf	T3CON,A ; of CCP1 capture
-	;bcf	CCP1IE,A ; disable CCP1 capture interrupt
-	;movlw	0x81 ; enable Timer1, prescaler set to 1,
-	;movwf	T1CON,A ; 16-bit, y use instruction cycle clock
-	;movlw	0x03 ; set CCP1 to capture on every edge
-	;movwf	CCP1CON,A ; "
-	;bcf	CCP1IF,A ; clear the CCP1IF flag
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	lfsr	0, Data_array 
-	;movlw   LOW(Data_array)    ; Load the low byte of DATA_ARRAY address into W
-	;movwf   FSR0L              ; Load the W register into FSR0L
-	;movlw   HIGH(Data_array)   ; Load the high byte of DATA_ARRAY address into W
-	;movwf   FSR0H              ; Load the W register into FSR0H
-	;movlw	low highword(Data_array)	; address of data in PM
-	movlw	0x01
-	movwf	TBLPTRU, A		; load upper bits to TBLPTRU
-	;movlw	high(Data_array)	; address of data in PM
-	movlw	0xFF
-	movwf	TBLPTRH, A		; load high byte to TBLPTRH
-	;movlw	low(Data_array)	; address of data in PM
-	movlw	0xEA
-	movwf	TBLPTRL, A		; load low byte to TBLPTRL
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	movlw	10000111B	; Set timer0 to 16-bit, prescaler:1/256
-	movwf	T0CON, A
-	bsf     TMR0IE ; Enable Timer0 overflow interrupt
-        bsf	GIE    ; Enable global interrupts
-	;clrf    TMR0          ; Clear Timer0
-        
-	org	0x100		    ; Main code starts here at address 0x100
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	call	DAC_Setup   
+	goto	start
+
+start:
+	
+	goto	change_signal
+    
 	
 change_signal:
 	
@@ -555,4 +529,4 @@ deaddelay:
 	return
 	
 	
-end	sawtooth
+end	rst
