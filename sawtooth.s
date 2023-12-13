@@ -75,10 +75,20 @@ rst:	org 0x0
 int_hi:	
 	org	0x0008	; high priority interrupt
 	movf	freq_rollover, W, A
-	btfsc	Replay, 0, A
-	movf	freq_replay, W, A
-	goto	DAC_Int_Hi	
+	btfsc	TRISF,6  ;test if replay mode is turned on - run next instruction if yes
+	call	ReplayON
+	movwf	freq_rollover, A
+	;btfss	TMR0IF		;Test the Timer0 interrupt flag (TMR0IF)
+	;bra	Record		; Branch to Recording if timer1 interrupt    
+	movlw	0xFF
+	movwf	TMR0H, A	
+	movff	freq_rollover, TMR0L, A	; assign to the lower 8 bits
+	tstfsz	freq_rollover, A
 
+	;call	Squarewave
+	call	sawtooth
+	bcf	TMR0IF		; clear interrupt flag
+	retfie	f		; fast return from interrupt
 setup:
 
     	bcf	CFGS	; point to Flash program memory  
@@ -87,9 +97,14 @@ setup:
 	goto	start
 
 start:
-	btfss	TRISF, 6		;if replay is on, detect notes should not work
+	btfss	TRISF,6	    ;test if replay mode is turned on - skip next instruction if yes
+	
 	call	detect_notes
-	movwf	freq_rollover, A
+	
+	btfsc	TRISF,7	    ;test if record mode is turned on
+	call	recordON    ;if yes go to recording branches
+	
+	
 	
 	goto	change_signal
     
@@ -110,28 +125,16 @@ loop:
 	incf 	0x06, W, A	;counter increment the value in 0x06
 test:
 	movwf	0x06, A	    ; Test for end of loop condition
-	
-	
-	call	detect_notes	;detect which note is played
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	btfsc	TRISF,7	    ;test if record mode is turned on
-	call	recordON    ;if yes go to recording branches
-	btfsc	TRISF,6	    ;test if replay mode is turned on
-	call	replayON    ;if yes go to replaying branches
-	;call	prescaler
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	;btfsc	TRISF,6	    ;test if replay mode is turned on
-	;call	skip
-	;btfss	TRISF,6	    ;test if replay mode is turned on
-	call	freq	    ;frequency variable
-	btfsc	PORTC,RCchange	;check if want to change signal
-	goto	change_signal			;return to choose signal
+
+	call	freq	    ;frequency variable - outputs the note
+	;btfsc	PORTC,RCchange	;check if want to change signal
+	;goto	change_signal			;return to choose signal
 	btfsc	PORTC,RCRecordON    ;test if manual input to turn on record mode
 	call	start_recording	    ;if yes, turn on the recording indicator
 	btfsc	PORTC,RCRecordOFF   ;test if manul input to turn off record mode
 	call	stop_recording	    ;if yes, turn off the recording indicator
 	btfsc	PORTC,RCReplaystop  ;test if manual input to turn off replay mode
-	call	stop_replay	    ;if yes, turn off the replaying indicator
+	call	stop_replay    ;if yes, turn off the replaying indicator
 	btfsc	PORTC,RCClear
 	call	clear_recording
 	btfsc	PORTC,RCReplayON	    ;test if manual input to turn on replay mode
@@ -209,6 +212,12 @@ stop_replay:
 	movwf	TRISF
 	return
 replayON:
+	bsf	PORTF,6	    ;set the replaying indication pin high
+	movlw	01000000B
+	movwf	TRISF
+	clrf	0x0A
+	clrf	0x0B
+	lfsr	0, Data_array	;point to memory location 0x100
 	clrf	0x01
 	movff	0x00, 0x03	;move the pre-saved backup frequency value to 0x03 for this round of delay
 	tstfsz	0x0B	    ;test if low word of duration is 0, if 0, test high word
@@ -281,7 +290,7 @@ detect_notes:
 	;banksel TRISB    ; Select bank for BUTTON_PIN
 	call	note_check
 	movf 0x03, W    ; Move the content of address 0x03 into the WREG
-	movwf freq_rollover ; Move the WREG content into the variable 'freq_rollover'
+	movwf freq_rollover, A ; Move the WREG content into the variable 'freq_rollover'
 	return
 note_check:
 	;port B note check
