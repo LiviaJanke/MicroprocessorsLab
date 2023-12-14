@@ -47,7 +47,6 @@ RJGs	equ 0
 RCchange	equ	0	
 RCsawtooth	equ	1
 RCsine		equ	2
-;RCsquare	equ	3
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 RCRecordON	equ	4
 RCRecordOFF	equ	5
@@ -60,9 +59,7 @@ delay_count:ds 1    ; reserve one byte for counter in the delay routine
 freq_rollover: ds 1
 delay_num:  ds 1
 Recording:  ds 1
-Replay: ds 1
-
-;ARRAY_LENGTH      equ 10     
+Replay: ds 1    
 
 rst:	
 	org	0x0000
@@ -70,16 +67,10 @@ rst:
 	
 hi_isr:
 	org	0x0008
-	;btfss	INTCON, 2	;TMR0IF
-	;goto	end_int
 	bcf	INTCON, 2	;TMR0IF; reset interrupt
 	goto	music_load
 end_int:
 	retfie	f		;return and reset interrupts
-	
-;replay_hi:
-;	org	0x0008
-;	goto	replayON
 	    
 main:
 	org	0x0100
@@ -98,16 +89,6 @@ main:
 	movwf	0x09
 	BANKSEL 0x100
 	clrf	0x100
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	;bsf	TRISC,2,A ; configure CCP1 pin for input
-	;movlw	0x81 ; use Timer1 as the time base
-	;movwf	T3CON,A ; of CCP1 capture
-	;bcf	CCP1IE,A ; disable CCP1 capture interrupt
-	;movlw	0x81 ; enable Timer1, prescaler set to 1,
-	;movwf	T1CON,A ; 16-bit, y use instruction cycle clock
-	;movlw	0x03 ; set CCP1 to capture on every edge
-	;movwf	CCP1CON,A ; "
-	;bcf	CCP1IF,A ; clear the CCP1IF flag
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	lfsr	0, Data_array 
 	movlw	0x01
@@ -117,42 +98,17 @@ main:
 	movlw	0xEA
 	movwf	TBLPTRL, A		; load low byte to TBLPTRL
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	;movlw	10000000B	; Set timer0 to 16-bit, prescaler:1/256
-	;movwf	T0CON, A
-	;movlw	01100000B	; set frequency to 8Mhz
-	;bsf	TMR1IE
-	;bsf     INTCON, 5    ;TMR0IE		; Enable Timer0 overflow interrupt
-	;bsf	INTCON2,2	; TMR0IP
 	bsf	INTCON,6	;PEIE	; Enable peripheral interrupts
         bsf	INTCON,7	;GIE	; Enable global interrupts
-	;clrf    TMR0          ; Clear Timer0
         
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	
 change_signal:
-	
-	;BANKSEL 0x100 
-	;movlw	0x03
-	;movwf	0x100
-	;movlw	0xFF
-	;movwf	0x101
-	;movlw	0xFA
-	;movwf	0x102
-	;movlw	0x02
-	;movwf	0x103
-	;movlw	0x01
-	;movwf	0x104
-	;movlw	0x01
-	;movwf	0x105
-	
 	btfsc	PORTC,RCsawtooth	;check if want to change signal
 	goto	sawtooth
 	btfsc	PORTC,RCsine
 	call	DAC_Int_Hi_sine
-	;btfsc	PORTC,RCsquare
-	;call	DAC_Int_Hi_square
 	goto	change_signal		;loop to wait for choice of waveform
-	
 sawtooth:   ;sawtooth waveform branch
 	lfsr	0, Data_array	;point to memory location 0x100
 	movlw 	0x0
@@ -172,10 +128,7 @@ test:
 	call	recordON    ;if yes go to recording branches
 	btfsc	TRISF,6	    ;test if replay mode is turned on
 	call	replay_condition
-	;call	prescaler
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	;btfsc	TRISF,6	    ;test if replay mode is turned on
-	;call	skip
 	btfsc	TRISF,6	    ;test if replay mode is turned on
 	movff	0x00, 0x03
 	call	freq	    ;frequency variable
@@ -191,15 +144,7 @@ test:
 	call	clear_recording
 	btfsc	PORTC,RCReplayON	    ;test if manual input to turn on replay mode
 	call	start_replay	    ;if yes, turn on the replaying indicator
-	
-	;call	hugedelay
-	;call	deaddelay
-	;call	deaddelay
-	;btfsc	TRISF,6		    ;test if replay mode is turned on
-	;call	delay		    ;if match the command number in the replay mode
-	;movlw 	0xFF	    ; The count down max
-	;cpfsgt 	0x06, A	    ; Test if the counter reached the max count number
-	;goto	0x0008
+
 	goto 	loop		    ; Re-run program from start
 
 ;Recording Branches;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -213,7 +158,6 @@ start_recording:
 	clrf	TMR0L		;reset timer high word
 	clrf	TMR0H		;reset timer low word
 	bsf     T0CON, 7 ; Turn on Timer0
-	;clrf	0x0F	    ;clear the pre-stored comparator in 0x0F and prepare for recording
 	return
 stop_recording:
 	bcf	PORTF,7	    ;clear the recording indication pin
@@ -238,8 +182,6 @@ after_note:
 	call	recording	;when note is different, store time
 	return
 recording:
-	;movwf	0x0F	    ;move the note indication into 0x0F for comparison in the next round
-	;movff	0x03,POSTINC0	;move frequency to memory
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	movff	TMR0L,POSTINC0      ; Write the high word to the current location in the array
 	movff	TMR0H,POSTINC0      ; Write the low word to the current location 
@@ -249,7 +191,6 @@ recording:
 	;;;;;;;;;;;;;;;;;;;reset and restart the timer for the next stage change
 	clrf	TMR0L		;reset timer high word
 	clrf	TMR0H		;reset timer low word
-	;bsf     T0CON, 7	    ; Turn on Timer0 again
 	return
 ;Replay Branches;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 replay_condition:
@@ -258,14 +199,12 @@ replay_condition:
 	call	replayON    ;if yes go to replaying branches
 	return
 start_replay:
-    	;bsf     INTCON, 5    ;TMR0IE	imer0 overflow interrupt; Enable Timer0 overflow interrupt
 	bsf	PORTF,6	    ;set the replaying indication pin high
 	movlw	01000000B
 	movwf	TRISF
 	clrf	0x0A
 	clrf	0x0B
 	lfsr	0, Data_array	;point to memory location 0x100
-	;goto	sawtooth
 	return
 stop_replay:
 	bcf     INTCON, 5
@@ -274,17 +213,10 @@ stop_replay:
 	movwf	TRISF
 	return
 replayON:
-	;clrf	0x01
 	movff	0x00, 0x03	;move the pre-saved backup frequency value to 0x03 for this round of delay
-	;tstfsz	TMR0L	    ;test if low word of duration is 0, if 0, test high word
-	;return    ;low word of duration is not 0, so maintain previous frequency
-	;tstfsz	TMR0H	    ;test if high word of duration is also 0, if 0, load new note in memory
-	;return    ;high word of duration is not 0, so maintain previous frequency
 	call	music_load  ;load next note played in memory
-	;bsf     INTCON, 5    ;TMR0IE		; Enable Timer0 overflow interrupt
 	return
 music_load:
-	;bcf	INTCON,2	;clear interrupt flag
 	bsf	INTCON,7	;GIE	; Enable global interrupts
 	movff	INDF0,0x03		;move frequency number into 0x03
 	movff	0x03,0x00		;move the frequency into 0x00 for backup use
@@ -296,11 +228,11 @@ music_load:
 	movf	INDF0,W
 	sublw	0xFF
 	movwf	TMR0H
-	;movff	INDF0,TMR0H		;move high word of duration to 0x0A
+	;;;;;;;;;;;;;;;;
 	incf	FSR0L		;same job as the previous one
 	btfsc	STATUS,2	
-	incf	FSR0H		
-	;movff	INDF0,TMR0L		;move low word of duration to 0x0B
+	incf	FSR0H	
+	;;;;;;;;;;;;;;;;
 	movf	INDF0,W
 	sublw	0xFF
 	movwf	TMR0L
@@ -346,10 +278,6 @@ skip:
 	cpfseq	0x03
 	call	freq
 	return
-
-;low_isr:
-;	org 0x18
-;	retfie
 ;Clear Memory;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 clear_recording:	
 	lfsr	0, Data_array
@@ -359,22 +287,15 @@ clear:
 	movlw	0xFF
 	cpfseq	FSR0L	
 	bra	clear
-	;banksel	0x0200
-	;movlw	0x00
-	;movwf	POSTINC0
-	;movlw	0xFF
-	;cpfseq	FSR0L	
-	;bra	clear
 	return
 ;NOTE Detection Branches;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 detect_notes:
-	;banksel TRISB    ; Select bank for BUTTON_PIN
 	call	note_check
 	return
 note_check:
 	;port B note check
-	btfsc   PORTB,RBG    
-        goto	NoteRBG
+	btfsc   PORTB,RBG	; Test if the button pin is clear (pressed)
+        goto	NoteRBG		; If pressed, jump to button_pressed
 	btfsc   PORTB,RBFs    
         goto	NoteRBFs
 	btfsc   PORTB,RBF    
@@ -387,8 +308,7 @@ note_check:
         goto	NoteRBD
 	btfsc   PORTB,RBCs    
         goto	NoteRBCs
-	btfsc   PORTB,RBC    ; Test if the button pin is clear (pressed)
-        goto	NoteRBC	    ; If pressed, jump to button_pressed	    
+        goto	NoteRBC	    	    
 	;port F note check
 	btfsc   PORTE,REB   
         goto	NoteREB
@@ -590,35 +510,4 @@ delay:
 	decfsz	0x09
 	bra	delay
 	return
-bigdelay:
-	call	delay
-	call	delay
-	call	delay
-	call	delay
-	call	delay
-	call	delay
-	return
-hugedelay:
-	call	bigdelay
-	call	bigdelay
-	call	bigdelay
-	call	bigdelay
-	call	bigdelay
-	call	bigdelay
-	call	bigdelay
-	return
-deaddelay:
-	call	hugedelay
-	call	hugedelay
-	call	hugedelay
-	call	hugedelay
-	call	hugedelay
-	call	hugedelay
-	call	hugedelay
-	call	hugedelay
-	call	hugedelay
-	call	hugedelay
-	return
-	
-	
 end	rst
