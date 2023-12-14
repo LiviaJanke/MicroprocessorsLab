@@ -70,8 +70,8 @@ rst:
 	
 hi_isr:
 	org	0x0008
-	btfss	INTCON, 2	;TMR0IF
-	goto	end_int
+	;btfss	INTCON, 2	;TMR0IF
+	;goto	end_int
 	bcf	INTCON, 2	;TMR0IF; reset interrupt
 	goto	music_load
 end_int:
@@ -258,7 +258,7 @@ replay_condition:
 	call	replayON    ;if yes go to replaying branches
 	return
 start_replay:
-    	bsf     INTCON, 5    ;TMR0IE	; Enable Timer0 overflow interrupt
+    	;bsf     INTCON, 5    ;TMR0IE	imer0 overflow interrupt; Enable Timer0 overflow interrupt
 	bsf	PORTF,6	    ;set the replaying indication pin high
 	movlw	01000000B
 	movwf	TRISF
@@ -308,7 +308,8 @@ music_load:
 	incf	FSR0L		;same job as the previous ones
 	btfsc	STATUS,2	
 	incf	FSR0H
-	movlw	10000111B	; Set timer0 to 16-bit, prescaler:1/256
+	bsf     INTCON, 5    ;TMR0IE	imer0 overflow interrupt; Enable Timer0 overflow interrupt
+	movlw	10000110B	; Set timer0 to 16-bit, prescaler:1/256
 	movwf	T0CON, A
 	return
 duration:
@@ -358,6 +359,12 @@ clear:
 	movlw	0xFF
 	cpfseq	FSR0L	
 	bra	clear
+	;banksel	0x0200
+	;movlw	0x00
+	;movwf	POSTINC0
+	;movlw	0xFF
+	;cpfseq	FSR0L	
+	;bra	clear
 	return
 ;NOTE Detection Branches;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 detect_notes:
@@ -366,39 +373,39 @@ detect_notes:
 	return
 note_check:
 	;port B note check
-	btfsc   PORTB,RBC    ; Test if the button pin is clear (pressed)
-        goto	NoteRBC	    ; If pressed, jump to button_pressed
-	btfsc   PORTB,RBCs    
-        goto	NoteRBCs	    
-	btfsc   PORTB,RBD    
-        goto	NoteRBD	    
-	btfsc   PORTB,RBDs    
-        goto	NoteRBDs	    
-	btfsc   PORTB,RBE    
-        goto	NoteRBE	    
-	btfsc   PORTB,RBF    
-        goto	NoteRBF	    
-	btfsc   PORTB,RBFs    
-        goto	NoteRBFs	    
 	btfsc   PORTB,RBG    
-        goto	NoteRBG	    
+        goto	NoteRBG
+	btfsc   PORTB,RBFs    
+        goto	NoteRBFs
+	btfsc   PORTB,RBF    
+        goto	NoteRBF
+	btfsc   PORTB,RBE    
+        goto	NoteRBE
+	btfsc   PORTB,RBDs    
+        goto	NoteRBDs
+	btfsc   PORTB,RBD    
+        goto	NoteRBD
+	btfsc   PORTB,RBCs    
+        goto	NoteRBCs
+	btfsc   PORTB,RBC    ; Test if the button pin is clear (pressed)
+        goto	NoteRBC	    ; If pressed, jump to button_pressed	    
 	;port F note check
-	btfsc   PORTE,REE    
-        goto	NoteREE
-	btfsc   PORTE,REF    
-        goto	NoteREF
-	btfsc   PORTE,REFs    
-        goto	NoteREFs
-	btfsc   PORTE,REG    
-        goto	NoteREG
-	btfsc   PORTE,REGs    
-        goto	NoteREGs
-	btfsc   PORTE,REA    
-        goto	NoteREA
-	btfsc   PORTE,REAs    
-        goto	NoteREAs
 	btfsc   PORTE,REB   
         goto	NoteREB
+	btfsc   PORTE,REAs    
+        goto	NoteREAs
+	btfsc   PORTE,REA    
+        goto	NoteREA
+	btfsc   PORTE,REGs    
+        goto	NoteREGs
+	btfsc   PORTE,REG    
+        goto	NoteREG
+	btfsc   PORTE,REFs    
+        goto	NoteREFs
+	btfsc   PORTE,REF    
+        goto	NoteREF
+	btfsc   PORTE,REE    
+        goto	NoteREE
 	;port J note check
 	btfsc   PORTJ,RJDs   
         goto	NoteRJDs
@@ -458,9 +465,9 @@ NoteRJC:
 	movwf	0x0E
 	return	
 NoteRJCs:
-	movlw	0x1C
+	movlw	0x19 
 	movwf	0x03, A
-	movlw	0x13
+	movlw	0x12
 	movwf	0x0E
 	return	
 NoteRJD:
@@ -501,7 +508,7 @@ NoteREG:
 	movwf	0x0E
 	return
 NoteREGs:
-	movlw	0x0D
+	movlw	0x0C
 	movwf	0x03, A
 	movlw	0x0B
 	movwf	0x0E
@@ -550,7 +557,7 @@ NoteRBDs:
 	movwf	0x0E
 	return
 NoteRBE:
-	movlw	0x06
+	movlw	0x05
 	movwf	0x03, A
 	movlw	0x03
 	movwf	0x0E
@@ -562,13 +569,13 @@ NoteRBF:
 	movwf	0x0E
 	return	
 NoteRBFs:
-	movlw	0x05
+	movlw	0x04
 	movwf	0x03, A
 	movlw	0x01
 	movwf	0x0E
 	return
 NoteRBG:
-	movlw	0x01 
+	movlw	0x04 
 	movwf	0x03, A
 	movlw	0x19
 	movwf	0x0E
