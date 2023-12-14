@@ -94,6 +94,8 @@ main:
 	bsf	EEPGD 	; access Flash program memory
 	movlw	0x55
 	movwf	0x02
+	movlw	0x01
+	movwf	0x09
 	BANKSEL 0x100
 	clrf	0x100
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -118,13 +120,9 @@ main:
 	;movlw	10000000B	; Set timer0 to 16-bit, prescaler:1/256
 	;movwf	T0CON, A
 	;movlw	01100000B	; set frequency to 8Mhz
-	;movwf	OSCCON		; ---
-	;bsf    TMR0IE		; Enable Timer0 overflow interrupt
-	;movlw	00110111B	; Set timer1 to 16-bit, 2MHz
-	;movwf	T1CON, A
 	;bsf	TMR1IE
-	bsf     INTCON, 5    ;TMR0IE		; Enable Timer0 overflow interrupt
-	bsf	INTCON2,2	; TMR0IP
+	;bsf     INTCON, 5    ;TMR0IE		; Enable Timer0 overflow interrupt
+	;bsf	INTCON2,2	; TMR0IP
 	bsf	INTCON,6	;PEIE	; Enable peripheral interrupts
         bsf	INTCON,7	;GIE	; Enable global interrupts
 	;clrf    TMR0          ; Clear Timer0
@@ -133,19 +131,19 @@ main:
 	
 change_signal:
 	
-	BANKSEL 0x100 
-	movlw	0x03
-	movwf	0x100
-	movlw	0xFF
-	movwf	0x101
-	movlw	0xFA
-	movwf	0x102
-	movlw	0x02
-	movwf	0x103
-	movlw	0x01
-	movwf	0x104
-	movlw	0x01
-	movwf	0x105
+	;BANKSEL 0x100 
+	;movlw	0x03
+	;movwf	0x100
+	;movlw	0xFF
+	;movwf	0x101
+	;movlw	0xFA
+	;movwf	0x102
+	;movlw	0x02
+	;movwf	0x103
+	;movlw	0x01
+	;movwf	0x104
+	;movlw	0x01
+	;movwf	0x105
 	
 	;btfsc	PORTC,RCsawtooth	;check if want to change signal
 	goto	sawtooth
@@ -167,20 +165,19 @@ loop:
 test:
 	movwf	0x06, A	    ; Test for end of loop condition
 	
-	;btfss	TRISF,6		;if replay is on, detect notes should not work
-	;call	detect_notes	;detect which note is played
+	btfss	TRISF,6		;if replay is on, detect notes should not work
+	call	detect_notes	;detect which note is played
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	;btfsc	TRISF,7	    ;test if record mode is turned on
-	;call	recordON    ;if yes go to recording branches
-	;btfsc	TRISF,6	    ;test if replay mode is turned on
-	movlw	0x00
-	cpfsgt	FSR0L
-	call	replayON    ;if yes go to replaying branches
+	btfsc	TRISF,7	    ;test if record mode is turned on
+	call	recordON    ;if yes go to recording branches
+	btfsc	TRISF,6	    ;test if replay mode is turned on
+	call	replay_condition
 	;call	prescaler
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;btfsc	TRISF,6	    ;test if replay mode is turned on
 	;call	skip
-	;btfss	TRISF,6	    ;test if replay mode is turned on
+	btfsc	TRISF,6	    ;test if replay mode is turned on
+	movff	0x00, 0x03
 	call	freq	    ;frequency variable
 	btfsc	PORTC,RCchange	;check if want to change signal
 	goto	change_signal			;return to choose signal
@@ -198,8 +195,8 @@ test:
 	;call	hugedelay
 	;call	deaddelay
 	;call	deaddelay
-	;btfsc	TRISF,6	    ;test if record mode is turned on
-	;call	delay    ;if yes go to recording branches
+	;btfsc	TRISF,6		    ;test if replay mode is turned on
+	;call	delay		    ;if match the command number in the replay mode
 	;movlw 	0xFF	    ; The count down max
 	;cpfsgt 	0x06, A	    ; Test if the counter reached the max count number
 	;goto	0x0008
@@ -210,6 +207,8 @@ start_recording:
 	bsf	PORTF,7	    ;set the recording indication pin high
 	movlw	10000000B
 	movwf	TRISF
+	movlw	10000111B	; Set timer0 to 16-bit, prescaler:1/256
+	movwf	T0CON, A
 	lfsr	0, Data_array	;point to the right location
 	clrf	TMR0L		;reset timer high word
 	clrf	TMR0H		;reset timer low word
@@ -253,7 +252,13 @@ recording:
 	;bsf     T0CON, 7	    ; Turn on Timer0 again
 	return
 ;Replay Branches;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+replay_condition:
+	movlw	0x00
+	cpfsgt	FSR0L
+	call	replayON    ;if yes go to replaying branches
+	return
 start_replay:
+    	bsf     INTCON, 5    ;TMR0IE	; Enable Timer0 overflow interrupt
 	bsf	PORTF,6	    ;set the replaying indication pin high
 	movlw	01000000B
 	movwf	TRISF
@@ -263,36 +268,47 @@ start_replay:
 	;goto	sawtooth
 	return
 stop_replay:
+	bcf     INTCON, 5
 	bcf	PORTF,6	    ;set the replaying indication pin high
 	movlw	00000000B
 	movwf	TRISF
 	return
 replayON:
-	clrf	0x01
+	;clrf	0x01
 	movff	0x00, 0x03	;move the pre-saved backup frequency value to 0x03 for this round of delay
-	tstfsz	TMR0L	    ;test if low word of duration is 0, if 0, test high word
-	return    ;low word of duration is not 0, so maintain previous frequency
-	tstfsz	TMR0H	    ;test if high word of duration is also 0, if 0, load new note in memory
-	return    ;high word of duration is not 0, so maintain previous frequency
+	;tstfsz	TMR0L	    ;test if low word of duration is 0, if 0, test high word
+	;return    ;low word of duration is not 0, so maintain previous frequency
+	;tstfsz	TMR0H	    ;test if high word of duration is also 0, if 0, load new note in memory
+	;return    ;high word of duration is not 0, so maintain previous frequency
 	call	music_load  ;load next note played in memory
 	;bsf     INTCON, 5    ;TMR0IE		; Enable Timer0 overflow interrupt
 	return
 music_load:
-	bcf	INTCON,2
+	;bcf	INTCON,2	;clear interrupt flag
+	bsf	INTCON,7	;GIE	; Enable global interrupts
 	movff	INDF0,0x03		;move frequency number into 0x03
 	movff	0x03,0x00		;move the frequency into 0x00 for backup use
+
 	incf	FSR0L		;increment FSR0 low word
 	btfsc	STATUS,2	;test if FSR0L incremented to 0xFF
 	incf	FSR0H		;if overflowed, increment FSR0H
-	movff	INDF0,TMR0H		;move high word of duration to 0x0A
+	;;;;;;;;;;;;;;;;
+	movf	INDF0,W
+	sublw	0xFF
+	movwf	TMR0H
+	;movff	INDF0,TMR0H		;move high word of duration to 0x0A
 	incf	FSR0L		;same job as the previous one
 	btfsc	STATUS,2	
 	incf	FSR0H		
-	movff	INDF0,TMR0L		;move low word of duration to 0x0B
+	;movff	INDF0,TMR0L		;move low word of duration to 0x0B
+	movf	INDF0,W
+	sublw	0xFF
+	movwf	TMR0L
+	;;;;;;;;;;;;;;;
 	incf	FSR0L		;same job as the previous ones
 	btfsc	STATUS,2	
 	incf	FSR0H
-	movlw	10000000B	; Set timer0 to 16-bit, prescaler:1/256
+	movlw	10000111B	; Set timer0 to 16-bit, prescaler:1/256
 	movwf	T0CON, A
 	return
 duration:
@@ -442,9 +458,9 @@ NoteRJC:
 	movwf	0x0E
 	return	
 NoteRJCs:
-	movlw	0x19 
+	movlw	0x1C
 	movwf	0x03, A
-	movlw	0x12
+	movlw	0x13
 	movwf	0x0E
 	return	
 NoteRJD:
@@ -552,7 +568,7 @@ NoteRBFs:
 	movwf	0x0E
 	return
 NoteRBG:
-	movlw	0x05 
+	movlw	0x01 
 	movwf	0x03, A
 	movlw	0x19
 	movwf	0x0E
