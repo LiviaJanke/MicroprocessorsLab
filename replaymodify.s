@@ -1,6 +1,6 @@
 #include <xc.inc>
 
-;extrn	DAC_Int_Hi_sine, DAC_Int_Hi_square
+extrn	DAC_Int_Hi_sine
 global	change_signal, detect_notes
 
 psect	udata_bank1 ; reserve data anywhere in RAM (here at 0x100)
@@ -145,13 +145,13 @@ change_signal:
 	;movlw	0x01
 	;movwf	0x105
 	
-	;btfsc	PORTC,RCsawtooth	;check if want to change signal
+	btfsc	PORTC,RCsawtooth	;check if want to change signal
 	goto	sawtooth
-	;btfsc	PORTC,RCsine
-	;call	DAC_Int_Hi_sine
+	btfsc	PORTC,RCsine
+	call	DAC_Int_Hi_sine
 	;btfsc	PORTC,RCsquare
 	;call	DAC_Int_Hi_square
-	;goto	change_signal		;loop to wait for choice of waveform
+	goto	change_signal		;loop to wait for choice of waveform
 	
 sawtooth:   ;sawtooth waveform branch
 	lfsr	0, Data_array	;point to memory location 0x100
