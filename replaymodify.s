@@ -83,14 +83,10 @@ main:
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	bcf	CFGS	; point to Flash program memory  
 	bsf	EEPGD 	; access Flash program memory
-	movlw	0x55
-	movwf	0x02
-	movlw	0x01
-	movwf	0x09
 	BANKSEL 0x100
 	clrf	0x100
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	lfsr	0, Data_array 
+	lfsr	0, Data_array		;0x100 as the start of storage for record mode
 	movlw	0x01
 	movwf	TBLPTRU, A		; load upper bits to TBLPTRU
 	movlw	0xFF
@@ -125,7 +121,7 @@ test:
 	call	detect_notes	;detect which note is played
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	btfsc	TRISF,7	    ;test if record mode is turned on
-	call	recordON    ;if yes go to recording branches
+	call	record_condition    ;if yes go to recording branches
 	btfsc	TRISF,6	    ;test if replay mode is turned on
 	call	replay_condition
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -135,7 +131,7 @@ test:
 	btfsc	PORTC,RCchange	;check if want to change signal
 	goto	change_signal			;return to choose signal
 	btfsc	PORTC,RCRecordON    ;test if manual input to turn on record mode
-	call	start_recording	    ;if yes, turn on the recording indicator
+	call	init_recording	    ;if yes, turn on the recording indicator
 	btfsc	PORTC,RCRecordOFF   ;test if manul input to turn off record mode
 	call	stop_recording	    ;if yes, turn off the recording indicator
 	btfsc	PORTC,RCReplaystop  ;test if manual input to turn off replay mode
@@ -148,7 +144,7 @@ test:
 	goto 	loop		    ; Re-run program from start
 
 ;Recording Branches;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-start_recording:
+init_recording:
 	bsf	PORTF,7	    ;set the recording indication pin high
 	movlw	10000000B
 	movwf	TRISF
@@ -157,7 +153,7 @@ start_recording:
 	lfsr	0, Data_array	;point to the right location
 	clrf	TMR0L		;reset timer high word
 	clrf	TMR0H		;reset timer low word
-	bsf     T0CON, 7 ; Turn on Timer0
+	bsf     T0CON, 7    ; Turn on Timer0
 	return
 stop_recording:
 	bcf	PORTF,7	    ;clear the recording indication pin
@@ -165,7 +161,7 @@ stop_recording:
 	movwf	TRISF
 	bcf     T0CON, 7 ; Turn off Timer0
 	return
-recordON:
+record_condition:
 	movlw	0x00
 	cpfsgt	FSR0L
 	movff	0x0E,0x0F
@@ -174,9 +170,9 @@ recordON:
 	movff	0x03, POSTINC0
 	movlw	0x01
 	cpfslt	FSR0L
-	call	after_note
+	call	check_note
 	return
-after_note:
+check_note:
 	movf	0x0E, W
 	cpfseq	0x0F	    ; test if a different note is played
 	call	recording	;when note is different, store time
@@ -243,40 +239,6 @@ music_load:
 	bsf     INTCON, 5    ;TMR0IE	imer0 overflow interrupt; Enable Timer0 overflow interrupt
 	movlw	10000110B	; Set timer0 to 16-bit, prescaler:1/256
 	movwf	T0CON, A
-	return
-duration:
-	;movff	0x00, 0x03	;move the pre-saved backup frequency value to 0x03 for this round of delay
-	dcfsnz	0x0B		;decrement low word, if 0, proceed to decrement of 0x0A
-	call	multi_delay	;derement of high word 0x0A
-	return
-multi_delay:
-	tstfsz	0x0A		;test if 0x0A is 0, if is, the value has reached 0x0000, so return to music load
-	call	more_delay	;if 0x0A is not 0, decrement 0x0A
-	return
-more_delay:
-	decf	0x0A
-	decf	0x0B
-	return
-prescaler:
-	movlw	0x02		;frequency modulation for replay mode
-	movwf	0x09
-	movff	0x00, 0x03	;move the pre-saved backup frequency value to 0x03 for this round of delay
-	decf	0x02
-	btfsc	STATUS,2
-	goto	replayON
-	return
-condition:
-	movlw	0x10
-	movwf	0x02
-	incf	0x01
-	movlw	0x01
-	cpfslt	0x01
-	goto	replayON
-	return
-skip:
-	movlw	0xFF
-	cpfseq	0x03
-	call	freq
 	return
 ;Clear Memory;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 clear_recording:	
