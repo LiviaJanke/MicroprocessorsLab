@@ -1,4 +1,4 @@
-# PLEASE LOOK AT WorkingCode branch for Alpha prototype code and demonstration
+# PLEASE LOOK AT WorkingCode branch for BETA prototype code and demonstration
 
 Many thanks, 
 
