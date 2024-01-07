@@ -1,4 +1,7 @@
-# Microprocessors
-Repository for Physics Year 3 microprocessors lab
+# Synthesiser
 
-A simple assembly program for PIC18 microprocessor, that counts to 100, putting the current count value out onto PORTB
+Working code from Beta prototype and demonstration videos for a simple music synthesiser based on the PIC18 microprocessor using an assembly programming language.
+
+Main code is contained in replaymodify. 
+
+Sinewave contains the lookup table for production of a sine wave.
